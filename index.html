@@ -30,7 +30,7 @@
         const params = new URLSearchParams(location.search);
         shopId = params.get("shop") || "default-shop";
 
-        await liff.init({ liffId: "2007345180-oVA2L6dw" });
+        await liff.init({ liffId: "2007345180-oVA2L6dw" }); // 
 
         if (!liff.isLoggedIn()) {
           liff.login();
