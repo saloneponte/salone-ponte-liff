@@ -41,40 +41,38 @@
         userId = profile.userId;
 
         document.getElementById("form").addEventListener("submit", async function (e) {
-          e.preventDefault();
+  e.preventDefault();
 
-          const data = {
-            shopId,
-            userId,
-            name: document.getElementById("name").value,
-            phone: document.getElementById("phone").value,
-            menu: document.getElementById("menu").value,
-            datetime: document.getElementById("datetime").value,
-            createdAt: new Date().toISOString()
-          };
+  const data = {
+    shopId,
+    userId,
+    name: document.getElementById("name").value,
+    phone: document.getElementById("phone").value,
+    menu: document.getElementById("menu").value,
+    datetime: document.getElementById("datetime").value,
+    createdAt: new Date().toISOString()
+  };
 
-          try {
-  await addDoc(collection(db, "reservations"), data);
+  try {
+    await addDoc(collection(db, "reservations"), data);
 
-  // LINEへメッセージ送信
-  if (liff.isInClient()) {
-    await liff.sendMessages([
-      {
-        type: "text",
-        text: `${data.name}様、ご予約ありがとうございます。\n\n日時：${new Date(data.datetime).toLocaleString()}\nメニュー：${data.menu}\n\nご来店お待ちしております！`
-      }
-    ]);
+    if (liff.isInClient()) {
+      await liff.sendMessages([
+        {
+          type: "text",
+          text: `${data.name}様、ご予約ありがとうございます。\n\n日時：${new Date(data.datetime).toLocaleString()}\nメニュー：${data.menu}\n\nご来店お待ちしております！`
+        }
+      ]);
+    }
+
+    alert("ご予約ありがとうございました！");
+    liff.closeWindow();
+  } catch (err) {
+    console.error("Firestore書き込みエラー:", err);
+    alert("予約保存に失敗しました。");
   }
+}); // ← ← ← 🔴 このカッコが抜けていました
 
-  alert("ご予約ありがとうございました！");
-  liff.closeWindow();
-} catch (err) {
-  console.error("Firestore書き込みエラー:", err);
-  alert("予約保存に失敗しました。");
-}
-
-          }
-        });
 
       } catch (e) {
         console.error("LIFF初期化エラー:", e);
