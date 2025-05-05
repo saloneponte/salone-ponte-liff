@@ -5,28 +5,23 @@
   <title>予約フォーム - Salone Ponte</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
-</head>
-<body>
-  <h2>ご予約フォーム</h2>
-  <form id="form">
-    <label>お名前：<input type="text" id="name" required></label><br><br>
-    <label>電話番号：<input type="tel" id="phone" required></label><br><br>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    <label>メニュー：
-      <select id="menu" required>
-        <option value="">選択してください</option>
-        <option value="カット">カット</option>
-        <option value="カラー">カラー</option>
-        <option value="パーマ">パーマ</option>
-      </select>
-    </label><br><br>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
+      authDomain: "salone-ponte-fceca.firebaseapp.com",
+      projectId: "salone-ponte-fceca",
+      storageBucket: "salone-ponte-fceca.firebasestorage.app",
+      messagingSenderId: "463711728652",
+      appId: "1:463711728652:web:59c749e11d201b26b86a29",
+      measurementId: "G-MPWGTB6R7C"
+    };
 
-    <label>希望日時：<input type="datetime-local" id="datetime" required></label><br><br>
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-    <button type="submit">予約する</button>
-  </form>
-
-  <script>
     let shopId = "";
     let userId = "";
 
@@ -45,33 +40,53 @@
         const profile = await liff.getProfile();
         userId = profile.userId;
 
+        document.getElementById("form").addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          const data = {
+            shopId,
+            userId,
+            name: document.getElementById("name").value,
+            phone: document.getElementById("phone").value,
+            menu: document.getElementById("menu").value,
+            datetime: document.getElementById("datetime").value,
+            createdAt: new Date().toISOString()
+          };
+
+          try {
+            await addDoc(collection(db, "reservations"), data);
+            alert("ご予約ありがとうございました！");
+            liff.closeWindow();
+          } catch (err) {
+            console.error("Firestore書き込みエラー:", err);
+            alert("予約保存に失敗しました。");
+          }
+        });
+
       } catch (e) {
         console.error("LIFF初期化エラー:", e);
-        alert("LINE内で開いてください。");
+        alert("LINEアプリ内で開いてください。");
       }
     }
 
-    document.getElementById("form").addEventListener("submit", async function (e) {
-      e.preventDefault();
-
-      const data = {
-        shopId,
-        userId,
-        name: document.getElementById("name").value,
-        phone: document.getElementById("phone").value,
-        menu: document.getElementById("menu").value,
-        datetime: document.getElementById("datetime").value,
-        createdAt: new Date().toISOString()
-      };
-
-      console.log("予約データ：", data);
-      alert("ご予約ありがとうございました！");
-
-      // 予約データを保存（Firebase連携は次フェーズ）
-      liff.closeWindow();
-    });
-
     main();
   </script>
+</head>
+<body>
+  <h2>ご予約フォーム</h2>
+  <form id="form">
+    <label>お名前：<input type="text" id="name" required></label><br><br>
+    <label>電話番号：<input type="tel" id="phone" required></label><br><br>
+    <label>メニュー：
+      <select id="menu" required>
+        <option value="">選択してください</option>
+        <option value="カット">カット</option>
+        <option value="カラー">カラー</option>
+        <option value="パーマ">パーマ</option>
+      </select>
+    </label><br><br>
+    <label>希望日時：<input type="datetime-local" id="datetime" required></label><br><br>
+    <button type="submit">予約する</button>
+  </form>
 </body>
 </html>
