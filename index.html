@@ -11,31 +11,47 @@
 
   <script>
     async function main() {
-      await liff.init({ liffId: "2007345180-oVA2L6dw" });
-      if (!liff.isLoggedIn()) {
-        liff.login();
+      try {
+        await liff.init({ liffId: "2007345180-oVA2L6dw" });
+  
+        // ログインしてなければログイン
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+  
+        console.log("ログイン済みです");
+  
+      } catch (err) {
+        console.error("LIFF初期化エラー:", err);
+        alert("LIFFの初期化に失敗しました。LINEアプリ内で開いているかをご確認ください。");
       }
     }
-
+  
     function sendMessage() {
       if (liff.isInClient()) {
         liff.sendMessages([
           {
-            type: 'text',
-            text: 'こんにちは！Salone Ponteです 🌿'
+            type: "text",
+            text: "こんにちは！Salone Ponteです 🌿"
           }
-        ]).then(() => {
-          alert('メッセージを送信しました！');
-        }).catch(err => {
-          console.error(err);
+        ])
+        .then(() => {
+          alert("メッセージを送信しました！");
+        })
+        .catch((err) => {
+          console.error("メッセージ送信失敗:", err);
+          alert("送信に失敗しました");
         });
       } else {
-        alert('LINEアプリ内で開いてください！');
+        alert("LINEアプリ内で開いてください！");
       }
     }
-
+  
     main();
   </script>
+  
+  
 </body>
 </html>
 
