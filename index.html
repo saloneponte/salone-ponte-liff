@@ -54,12 +54,25 @@
           };
 
           try {
-            await addDoc(collection(db, "reservations"), data);
-            alert("ご予約ありがとうございました！");
-            liff.closeWindow();
-          } catch (err) {
-            console.error("Firestore書き込みエラー:", err);
-            alert("予約保存に失敗しました。");
+  await addDoc(collection(db, "reservations"), data);
+
+  // LINEへメッセージ送信
+  if (liff.isInClient()) {
+    await liff.sendMessages([
+      {
+        type: "text",
+        text: `${data.name}様、ご予約ありがとうございます。\n\n日時：${new Date(data.datetime).toLocaleString()}\nメニュー：${data.menu}\n\nご来店お待ちしております！`
+      }
+    ]);
+  }
+
+  alert("ご予約ありがとうございました！");
+  liff.closeWindow();
+} catch (err) {
+  console.error("Firestore書き込みエラー:", err);
+  alert("予約保存に失敗しました。");
+}
+
           }
         });
 
