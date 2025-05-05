@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>予約ダッシュボード</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: sans-serif; margin: 20px; }
+    .card { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
+  </style>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
+      authDomain: "salone-ponte-fceca.firebaseapp.com",
+      projectId: "salone-ponte-fceca",
+      storageBucket: "salone-ponte-fceca.firebasestorage.app",
+      messagingSenderId: "463711728652",
+      appId: "1:463711728652:web:59c749e11d201b26b86a29",
+      measurementId: "G-MPWGTB6R7C"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    async function loadReservations() {
+      const params = new URLSearchParams(location.search);
+      const shopId = params.get("shop") || "default-shop";
+
+      const q = query(
+        collection(db, "reservations"),
+        where("shopId", "==", shopId),
+        orderBy("datetime")
+      );
+
+      const querySnapshot = await getDocs(q);
+      const container = document.getElementById("reservations");
+
+      if (querySnapshot.empty) {
+        container.innerHTML = "<p>予約データがありません。</p>";
+        return;
+      }
+
+      querySnapshot.forEach((doc) => {
+        const d = doc.data();
+        const html = `
+          <div class="card">
+            <strong>${d.name}</strong>（${d.phone}）<br>
+            メニュー：${d.menu}<br>
+            日時：${new Date(d.datetime).toLocaleString()}<br>
+            登録：${new Date(d.createdAt).toLocaleString()}
+          </div>
+        `;
+        container.innerHTML += html;
+      });
+    }
+
+    loadReservations();
+  </script>
+</head>
+<body>
+  <h2>予約一覧（ダッシュボード）</h2>
+  <div id="reservations">読み込み中...</div>
+</body>
+</html>
