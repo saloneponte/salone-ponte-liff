@@ -2,15 +2,11 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>予約ダッシュボード</title>
+  <title>予約一覧 - Salone Ponte</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body { font-family: sans-serif; margin: 20px; }
-    .card { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
-  </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, collection, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getFirestore, collection, query, where, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
@@ -25,43 +21,42 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    async function loadReservations() {
-      const params = new URLSearchParams(location.search);
-      const shopId = params.get("shop") || "default-shop";
+    const params = new URLSearchParams(location.search);
+    const shopId = params.get("shop") || "default-shop";
 
-      const q = query(
-        collection(db, "reservations"),
-        where("shopId", "==", shopId),
-        orderBy("datetime")
-      );
+    const q = query(collection(db, "reservations"), where("shopId", "==", shopId));
 
-      const querySnapshot = await getDocs(q);
-      const container = document.getElementById("reservations");
+    onSnapshot(q, (snapshot) => {
+      const list = document.getElementById("list");
+      list.innerHTML = "";
 
-      if (querySnapshot.empty) {
-        container.innerHTML = "<p>予約データがありません。</p>";
-        return;
-      }
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const li = document.createElement("li");
+        const status = data.status || "pending";
 
-      querySnapshot.forEach((doc) => {
-        const d = doc.data();
-        const html = `
-          <div class="card">
-            <strong>${d.name}</strong>（${d.phone}）<br>
-            メニュー：${d.menu}<br>
-            日時：${new Date(d.datetime).toLocaleString()}<br>
-            登録：${new Date(d.createdAt).toLocaleString()}
-          </div>
+        li.innerHTML = `
+          <strong>${data.name} 様</strong> / ${data.menu} / ${new Date(data.datetime).toLocaleString()}<br>
+          状態: <span style="color:${status === "done" ? "green" : "red"}">${status}</span>
+          ${status !== "done" ? `<button data-id="${docSnap.id}">完了</button>` : ""}
+          <hr>
         `;
-        container.innerHTML += html;
-      });
-    }
 
-    loadReservations();
+        list.appendChild(li);
+      });
+
+      document.querySelectorAll("button[data-id]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-id");
+          const docRef = doc(db, "reservations", id);
+          await updateDoc(docRef, { status: "done" });
+        });
+      });
+    });
   </script>
 </head>
 <body>
-  <h2>予約一覧（ダッシュボード）</h2>
-  <div id="reservations">読み込み中...</div>
+  <h2>予約一覧</h2>
+  <ul id="list"></ul>
 </body>
 </html>
