@@ -57,13 +57,23 @@
     await addDoc(collection(db, "reservations"), data);
 
     if (liff.isInClient()) {
-      await liff.sendMessages([
-        {
-          type: "text",
-          text: `${data.name}様、ご予約ありがとうございます。\n\n日時：${new Date(data.datetime).toLocaleString()}\nメニュー：${data.menu}\n\nご来店お待ちしております！`
-        }
-      ]);
+  console.log("✅ LINE内で開いています");
+  await liff.sendMessages([
+    {
+      type: "text",
+      text: `${data.name}様、ご予約ありがとうございます。\n\n日時：${new Date(data.datetime).toLocaleString()}\nメニュー：${data.menu}\n\nご来店お待ちしております！`
     }
+  ])
+  .then(() => {
+    console.log("✅ メッセージ送信成功");
+  })
+  .catch((err) => {
+    console.error("❌ メッセージ送信エラー:", err);
+  });
+} else {
+  console.warn("❌ LINE外で開いています（liff.isInClient() = false）");
+}
+
 
     alert("ご予約ありがとうございました！");
     liff.closeWindow();
