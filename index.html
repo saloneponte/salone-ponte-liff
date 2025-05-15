@@ -30,7 +30,7 @@
         const params = new URLSearchParams(location.search);
         shopId = params.get("shop") || "default-shop";
 
-        await liff.init({ liffId: "2007345180-oVA2L6dw" }); // 
+        await liff.init({ liffId: "2007345180-oVA2L6dw" });
 
         if (!liff.isLoggedIn()) {
           liff.login();
@@ -41,52 +41,43 @@
         userId = profile.userId;
 
         document.getElementById("form").addEventListener("submit", async function (e) {
-  e.preventDefault();
+          e.preventDefault();
 
-  const data = {
-    shopId,
-    userId,
-    name: document.getElementById("name").value,
-    phone: document.getElementById("phone").value,
-    menu: document.getElementById("menu").value,
-    datetime: document.getElementById("datetime").value,
-    createdAt: new Date().toISOString()
-  };
+          const data = {
+            shopId,
+            userId,
+            name: document.getElementById("name").value,
+            phone: document.getElementById("phone").value,
+            menu: document.getElementById("menu").value,
+            datetime: document.getElementById("datetime").value,
+            status: "pending",
+            createdAt: new Date().toISOString()
+          };
 
-  try {
-    await addDoc(collection(db, "reservations"), data);
+          try {
+            await addDoc(collection(db, "reservations"), data);
 
-    if (liff.isInClient()) {
-  console.log("✅ LINE内で開いています");
-  await liff.sendMessages([
-    {
-      type: "text",
-      text: `${data.name}様、ご予約ありがとうございます。\n\n日時：${new Date(data.datetime).toLocaleString()}\nメニュー：${data.menu}\n\nご来店お待ちしております！`
-    }
-  ])
-  .then(() => {
-    console.log("✅ メッセージ送信成功");
-  })
-  .catch((err) => {
-    console.error("❌ メッセージ送信エラー:", err);
-  });
-} else {
-  console.warn("❌ LINE外で開いています（liff.isInClient() = false）");
-}
+            // LINEへメッセージ送信（LIFF内でのみ）
+            if (liff.isInClient()) {
+              await liff.sendMessages([
+                {
+                  type: "text",
+                  text: `${data.name}様、ご予約ありがとうございます。\n\n日時：${new Date(data.datetime).toLocaleString()}\nメニュー：${data.menu} \n\nご来店お待ちしております！`
+                }
+              ]);
+            }
 
-
-    alert("ご予約ありがとうございました！");
-    liff.closeWindow();
-  } catch (err) {
-    console.error("Firestore書き込みエラー:", err);
-    alert("予約保存に失敗しました。");
-  }
-}); // ← ← ← 🔴 このカッコが抜けていました
-
+            alert("ご予約ありがとうございました！");
+            liff.closeWindow();
+          } catch (err) {
+            console.error("Firestore書き込みエラー:", err);
+            alert("予約保存に失敗しました。LINEで開いているか、通信状況をご確認ください。");
+          }
+        });
 
       } catch (e) {
         console.error("LIFF初期化エラー:", e);
-        alert("LINEアプリ内で開いてください。");
+        alert("LINEアプリ内で開いてください。ログインが必要です。");
       }
     }
 
