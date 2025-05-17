@@ -2,11 +2,32 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>予約一覧 - Salone Ponte</title>
+  <title>予約ダッシュボード</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    table, th, td { border: 1px solid black; border-collapse: collapse; padding: 8px; }
+    th { background-color: #f0f0f0; }
+    button { padding: 4px 8px; }
+  </style>
+</head>
+<body>
+  <h2>予約ダッシュボード</h2>
+  <label>店舗ID: <input type="text" id="shopFilter" placeholder="例: a" /></label>
+  <button onclick="loadReservations()">読み込み</button>
+  <button onclick="downloadCSV()">CSV出力</button>
+  <br><br>
+  <table id="reservationsTable">
+    <thead>
+      <tr>
+        <th>名前</th><th>電話</th><th>メニュー</th><th>日時</th><th>ステータス</th><th>操作</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, collection, query, where, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getFirestore, collection, query, where, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
@@ -21,42 +42,57 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const params = new URLSearchParams(location.search);
-    const shopId = params.get("shop") || "default-shop";
+    window.loadReservations = async () => {
+      const tbody = document.querySelector("#reservationsTable tbody");
+      tbody.innerHTML = "";
 
-    const q = query(collection(db, "reservations"), where("shopId", "==", shopId));
+      const shopId = document.getElementById("shopFilter").value.trim();
+      const q = shopId ? query(collection(db, "reservations"), where("shopId", "==", shopId)) : collection(db, "reservations");
+      const snapshot = await getDocs(q);
 
-    onSnapshot(q, (snapshot) => {
-      const list = document.getElementById("list");
-      list.innerHTML = "";
-
+      const rows = [];
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
-        const li = document.createElement("li");
-        const status = data.status || "pending";
+        rows.push({ id: docSnap.id, ...data });
+      });
 
-        li.innerHTML = `
-          <strong>${data.name} 様</strong> / ${data.menu} / ${new Date(data.datetime).toLocaleString()}<br>
-          状態: <span style="color:${status === "done" ? "green" : "red"}">${status}</span>
-          ${status !== "done" ? `<button data-id="${docSnap.id}">完了</button>` : ""}
-          <hr>
+      rows.sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+
+      for (const r of rows) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${r.name}</td>
+          <td>${r.phone}</td>
+          <td>${r.menu}</td>
+          <td>${new Date(r.datetime).toLocaleString()}</td>
+          <td>${r.status || "pending"}</td>
+          <td><button onclick="markDone('${r.id}')">完了</button></td>
         `;
+        tbody.appendChild(tr);
+      }
+    };
 
-        list.appendChild(li);
-      });
+    window.markDone = async (id) => {
+      const ref = doc(db, "reservations", id);
+      await updateDoc(ref, { status: "done" });
+      loadReservations();
+    };
 
-      document.querySelectorAll("button[data-id]").forEach((btn) => {
-        btn.addEventListener("click", async () => {
-          const id = btn.getAttribute("data-id");
-          const docRef = doc(db, "reservations", id);
-          await updateDoc(docRef, { status: "done" });
-        });
+    window.downloadCSV = () => {
+      const rows = document.querySelectorAll("#reservationsTable tr");
+      let csv = "";
+      rows.forEach(row => {
+        const cols = row.querySelectorAll("td, th");
+        const rowText = Array.from(cols).map(col => `"${col.innerText}"`).join(",");
+        csv += rowText + "\n";
       });
-    });
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "reservations.csv";
+      a.click();
+    };
   </script>
-</head>
-<body>
-  <h2>予約一覧</h2>
-  <ul id="list"></ul>
 </body>
 </html>
