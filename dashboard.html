@@ -37,6 +37,20 @@
     <button onclick="downloadCSV()">CSV出力</button>
   </div>
 
+  <h3>メニュー別 所要時間（分）</h3>
+  <div id="durationEditor">
+    <label>メニュー名: <input type="text" id="menuName"></label>
+    <label>時間: <input type="number" id="menuDuration" min="1"></label>
+    <button onclick="saveDuration()">保存</button>
+  </div>
+
+  <table id="durationTable">
+    <thead>
+      <tr><th>メニュー</th><th>時間（分）</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
   <table id="reservationsTable">
     <thead>
       <tr>
@@ -48,7 +62,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, collection, query, where, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getFirestore, collection, query, where, getDocs, updateDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
@@ -114,6 +128,31 @@
       a.download = "reservations.csv";
       a.click();
     };
+
+    window.saveDuration = async () => {
+      const menu = document.getElementById("menuName").value.trim();
+      const duration = parseInt(document.getElementById("menuDuration").value, 10);
+      if (!menu || isNaN(duration)) return alert("メニューと時間を正しく入力してください");
+
+      const ref = doc(db, "menuDurations", menu);
+      await setDoc(ref, { duration });
+      loadDurations();
+    };
+
+    async function loadDurations() {
+      const table = document.querySelector("#durationTable tbody");
+      table.innerHTML = "";
+      const snapshot = await getDocs(collection(db, "menuDurations"));
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${docSnap.id}</td><td>${data.duration}</td>`;
+        table.appendChild(tr);
+      });
+    }
+
+    loadReservations();
+    loadDurations();
   </script>
 </body>
 </html>
