@@ -1,104 +1,117 @@
+<!-- index.html - カレンダー予約UI（スマホ対応） -->
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <title>予約フォーム - Salone Ponte</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 10px;
+    }
+    .calendar {
+      overflow-x: auto;
+      border-collapse: collapse;
+      width: 100%;
+    }
+    .calendar th,
+    .calendar td {
+      border: 1px solid #ccc;
+      text-align: center;
+      padding: 8px;
+      min-width: 40px;
+    }
+    .calendar th {
+      background-color: #f0f0f0;
+    }
+    .available {
+      background-color: #cce5ff;
+      cursor: pointer;
+    }
+    .available:hover {
+      background-color: #99ccff;
+    }
+    .selected {
+      background-color: #007bff;
+      color: white;
+    }
+    .controls {
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h2>ご予約カレンダー</h2>
+  <div class="controls">
+    <label>メニュー:
+      <select id="menu">
+        <option value="cut">カット</option>
+        <option value="color">カラー</option>
+        <option value="perm">パーマ</option>
+      </select>
+    </label>
+  </div>
+  <table class="calendar" id="calendar">
+    <thead>
+      <tr>
+        <th>時間</th>
+        <th>月</th>
+        <th>火</th>
+        <th>水</th>
+        <th>木</th>
+        <th>金</th>
+        <th>土</th>
+        <th>日</th>
+      </tr>
+    </thead>
+    <tbody id="calendar-body">
+      <!-- ここに時間枠が表示される -->
+    </tbody>
+  </table>
+  <script>
+    const calendarBody = document.getElementById("calendar-body");
+    const menuSelect = document.getElementById("menu");
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
-      authDomain: "salone-ponte-fceca.firebaseapp.com",
-      projectId: "salone-ponte-fceca",
-      storageBucket: "salone-ponte-fceca.firebasestorage.app",
-      messagingSenderId: "463711728652",
-      appId: "1:463711728652:web:59c749e11d201b26b86a29",
-      measurementId: "G-MPWGTB6R7C"
+    const durations = {
+      cut: 60,
+      color: 90,
+      perm: 120
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    let shopId = "";
-    let userId = "";
-
-    async function main() {
-      try {
-        const params = new URLSearchParams(location.search);
-        shopId = params.get("shop") || "default-shop";
-
-        await liff.init({ liffId: "2007345180-oVA2L6dw" });
-
-        if (!liff.isLoggedIn()) {
-          liff.login();
-          return;
-        }
-
-        const profile = await liff.getProfile();
-        userId = profile.userId;
-
-        document.getElementById("form").addEventListener("submit", async function (e) {
-          e.preventDefault();
-
-          const data = {
-            shopId,
-            userId,
-            name: document.getElementById("name").value,
-            phone: document.getElementById("phone").value,
-            menu: document.getElementById("menu").value,
-            datetime: document.getElementById("datetime").value,
-            status: "pending",
-            createdAt: new Date().toISOString()
-          };
-
-          try {
-            await addDoc(collection(db, "reservations"), data);
-
-            // LINEへメッセージ送信（LIFF内でのみ）
-            if (liff.isInClient()) {
-              await liff.sendMessages([
-                {
-                  type: "text",
-                  text: `${data.name}様、ご予約ありがとうございます。\n\n日時：${new Date(data.datetime).toLocaleString()}\nメニュー：${data.menu} \n\nご来店お待ちしております！`
-                }
-              ]);
-            }
-
-            alert("ご予約ありがとうございました！");
-            liff.closeWindow();
-          } catch (err) {
-            console.error("Firestore書き込みエラー:", err);
-            alert("予約保存に失敗しました。LINEで開いているか、通信状況をご確認ください。");
-          }
-        });
-
-      } catch (e) {
-        console.error("LIFF初期化エラー:", e);
-        alert("LINEアプリ内で開いてください。ログインが必要です。");
+    const times = [];
+    for (let hour = 10; hour <= 17; hour++) {
+      for (let min = 0; min < 60; min += 30) {
+        times.push(`${String(hour).padStart(2, '0')}:${min === 0 ? '00' : '30'}`);
       }
     }
 
-    main();
+    const days = ["月", "火", "水", "木", "金", "土", "日"];
+
+    function renderCalendar() {
+      calendarBody.innerHTML = "";
+      times.forEach(time => {
+        const tr = document.createElement("tr");
+        const timeCell = document.createElement("td");
+        timeCell.textContent = time;
+        tr.appendChild(timeCell);
+        for (let i = 0; i < 7; i++) {
+          const td = document.createElement("td");
+          td.className = "available";
+          td.textContent = "◯";
+          td.addEventListener("click", () => {
+            document.querySelectorAll(".selected").forEach(cell => cell.classList.remove("selected"));
+            td.classList.add("selected");
+          });
+          tr.appendChild(td);
+        }
+        calendarBody.appendChild(tr);
+      });
+    }
+
+    menuSelect.addEventListener("change", renderCalendar);
+
+    renderCalendar();
   </script>
-</head>
-<body>
-  <h2>ご予約フォーム</h2>
-  <form id="form">
-    <label>お名前：<input type="text" id="name" required></label><br><br>
-    <label>電話番号：<input type="tel" id="phone" required></label><br><br>
-    <label>メニュー：
-      <select id="menu" required>
-        <option value="">選択してください</option>
-        <option value="カット">カット</option>
-        <option value="カラー">カラー</option>
-        <option value="パーマ">パーマ</option>
-      </select>
-    </label><br><br>
-    <label>希望日時：<input type="datetime-local" id="datetime" required></label><br><br>
-    <button type="submit">予約する</button>
-  </form>
 </body>
 </html>
