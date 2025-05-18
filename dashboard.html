@@ -2,36 +2,72 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>予約ダッシュボード - Salone Ponte</title>
+  <title>予約フォーム - Salone Ponte</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
       font-family: sans-serif;
-      margin: 20px;
+      padding: 10px;
     }
-    table {
+    h2 {
+      margin-top: 30px;
+    }
+    .calendar, .customer-table {
+      overflow-x: auto;
       border-collapse: collapse;
       width: 100%;
+      margin-bottom: 30px;
     }
-    th, td {
+    .calendar th, .calendar td, .customer-table th, .customer-table td {
       border: 1px solid #ccc;
-      padding: 8px;
       text-align: center;
+      padding: 8px;
+      min-width: 40px;
     }
-    th {
-      background-color: #f4f4f4;
+    .calendar th, .customer-table th {
+      background-color: #f0f0f0;
     }
-    .tag {
-      display: inline-block;
-      background-color: #e0e0e0;
-      border-radius: 5px;
-      padding: 2px 6px;
+    .available {
+      background-color: #cce5ff;
+      cursor: pointer;
+    }
+    .available:hover {
+      background-color: #99ccff;
+    }
+    .unavailable {
+      background-color: #f8d7da;
+      color: #721c24;
+      cursor: not-allowed;
+    }
+    .selected {
+      background-color: #007bff;
+      color: white;
+    }
+    .controls {
+      margin: 10px 0;
+    }
+    .submit {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      background-color: #28a745;
+      color: white;
+      font-size: 16px;
+      border: none;
+      border-radius: 4px;
+      margin-top: 20px;
+      cursor: pointer;
+    }
+    .history {
       font-size: 12px;
+      color: #555;
     }
   </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import {
+      getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
@@ -46,42 +82,55 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const tbody = document.getElementById("reservation-body");
+    async function renderCustomerList() {
+      const container = document.getElementById("customer-list");
+      container.innerHTML = "<h2>顧客リスト</h2>";
 
-    const q = query(collection(db, "reservations"), orderBy("datetime", "asc"));
+      const table = document.createElement("table");
+      table.className = "customer-table";
 
-    onSnapshot(q, (snapshot) => {
-      tbody.innerHTML = "";
-      snapshot.forEach((doc) => {
-        const data = doc.data();
+      const thead = document.createElement("thead");
+      thead.innerHTML = `
+        <tr>
+          <th>名前</th>
+          <th>電話番号</th>
+          <th>来店回数</th>
+          <th>最新来店</th>
+          <th>履歴</th>
+        </tr>`;
+      table.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
+      const snapshot = await getDocs(collection(db, "customers"));
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
         const tr = document.createElement("tr");
+        const latest = data.reservations && data.reservations.length
+          ? new Date(data.reservations[data.reservations.length - 1].datetime).toLocaleString()
+          : "-";
 
-        const date = new Date(data.datetime);
-        const formattedDate = date.toLocaleString("ja-JP", { dateStyle: "short", timeStyle: "short" });
+        const history = (data.reservations || [])
+          .map(r => `${new Date(r.datetime).toLocaleDateString()}：${r.menu}`)
+          .join("<br>");
 
         tr.innerHTML = `
-          <td>${formattedDate}</td>
-          <td>${data.menu}</td>
           <td>${data.name || "-"}</td>
           <td>${data.phone || "-"}</td>
+          <td>${(data.reservations || []).length}</td>
+          <td>${latest}</td>
+          <td class="history">${history}</td>
         `;
         tbody.appendChild(tr);
       });
-    });
+
+      table.appendChild(tbody);
+      container.appendChild(table);
+    }
+
+    renderCustomerList();
   </script>
 </head>
 <body>
-  <h2>予約一覧 - Salone Ponte</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>日時</th>
-        <th>メニュー</th>
-        <th>名前</th>
-        <th>電話番号</th>
-      </tr>
-    </thead>
-    <tbody id="reservation-body"></tbody>
-  </table>
+  <div id="customer-list"></div>
 </body>
 </html>

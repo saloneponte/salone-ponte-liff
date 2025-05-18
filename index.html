@@ -57,7 +57,12 @@
   </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import {
+      getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc,
+      query, where
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
@@ -86,6 +91,8 @@
 
     let selectedDate = null;
     let selectedTime = null;
+    let userId = "";
+    let userName = "";
 
     async function renderCalendar() {
       calendarBody.innerHTML = "";
@@ -154,6 +161,8 @@
       reservationDateTime.setMinutes(parseInt(minutes));
 
       const result = {
+        userId: userId,
+        name: userName,
         menu: menu,
         datetime: reservationDateTime.toISOString(),
         createdAt: new Date().toISOString()
@@ -161,6 +170,33 @@
 
       try {
         await addDoc(collection(db, "reservations"), result);
+
+        const customerRef = doc(db, "customers", userId);
+        const customerSnap = await getDoc(customerRef);
+
+        if (customerSnap.exists()) {
+          await updateDoc(customerRef, {
+            name: userName,
+            updatedAt: new Date().toISOString(),
+            reservations: [...(customerSnap.data().reservations || []), {
+              menu,
+              datetime: reservationDateTime.toISOString()
+            }]
+          });
+        } else {
+          await setDoc(customerRef, {
+            userId,
+            name: userName,
+            createdAt: new Date().toISOString(),
+            reservations: [
+              {
+                menu,
+                datetime: reservationDateTime.toISOString()
+              }
+            ]
+          });
+        }
+
         alert(`${reservationDateTime.toLocaleString()} に予約が完了しました`);
         renderCalendar();
       } catch (e) {
@@ -170,7 +206,21 @@
     });
 
     menuSelect.addEventListener("change", renderCalendar);
-    renderCalendar();
+
+    // LINEログインからユーザー情報取得
+    window.onload = async () => {
+      try {
+        await liff.init({ liffId: "2007345180-oVA2L6dw" });
+        if (!liff.isLoggedIn()) liff.login();
+        const profile = await liff.getProfile();
+        userId = profile.userId;
+        userName = profile.displayName;
+        renderCalendar();
+      } catch (err) {
+        console.error("LIFFエラー:", err);
+        alert("LINEアプリ内で開いてください。\nまたはLINEログインを確認してください。");
+      }
+    }
   </script>
 </head>
 <body>
