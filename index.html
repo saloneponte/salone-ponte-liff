@@ -1,4 +1,4 @@
-<!-- index.html - カレンダー予約UI（スマホ対応） -->
+<!-- index.html - カレンダー予約UI（スマホ対応、予約選択機能付き） -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -39,6 +39,18 @@
     .controls {
       margin: 10px 0;
     }
+    .submit {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      background-color: #28a745;
+      color: white;
+      font-size: 16px;
+      border: none;
+      border-radius: 4px;
+      margin-top: 20px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -65,13 +77,15 @@
         <th>日</th>
       </tr>
     </thead>
-    <tbody id="calendar-body">
-      <!-- ここに時間枠が表示される -->
-    </tbody>
+    <tbody id="calendar-body"></tbody>
   </table>
+
+  <button id="reserveBtn" class="submit" style="display: none;">この内容で予約する</button>
+
   <script>
     const calendarBody = document.getElementById("calendar-body");
     const menuSelect = document.getElementById("menu");
+    const reserveBtn = document.getElementById("reserveBtn");
 
     const durations = {
       cut: 60,
@@ -86,22 +100,28 @@
       }
     }
 
-    const days = ["月", "火", "水", "木", "金", "土", "日"];
-
     function renderCalendar() {
       calendarBody.innerHTML = "";
+      reserveBtn.style.display = "none";
       times.forEach(time => {
         const tr = document.createElement("tr");
         const timeCell = document.createElement("td");
         timeCell.textContent = time;
         tr.appendChild(timeCell);
+
         for (let i = 0; i < 7; i++) {
           const td = document.createElement("td");
           td.className = "available";
           td.textContent = "◯";
+          td.dataset.dayOffset = i;
+          td.dataset.time = time;
           td.addEventListener("click", () => {
             document.querySelectorAll(".selected").forEach(cell => cell.classList.remove("selected"));
             td.classList.add("selected");
+            reserveBtn.style.display = "block";
+            selectedDate = new Date();
+            selectedDate.setDate(selectedDate.getDate() + parseInt(td.dataset.dayOffset));
+            selectedTime = td.dataset.time;
           });
           tr.appendChild(td);
         }
@@ -109,8 +129,30 @@
       });
     }
 
-    menuSelect.addEventListener("change", renderCalendar);
+    let selectedDate = null;
+    let selectedTime = null;
 
+    reserveBtn.addEventListener("click", () => {
+      if (!selectedDate || !selectedTime) return;
+      const menu = menuSelect.value;
+      const reservationDateTime = new Date(selectedDate);
+      const [hours, minutes] = selectedTime.split(":");
+      reservationDateTime.setHours(parseInt(hours));
+      reservationDateTime.setMinutes(parseInt(minutes));
+
+      const result = {
+        menu: menu,
+        datetime: reservationDateTime.toISOString(),
+        createdAt: new Date().toISOString()
+      };
+
+      console.log("予約内容:", result);
+      alert(`${reservationDateTime.toLocaleString()}に予約を受け付けました。`);
+
+      // TODO: Firestore保存処理
+    });
+
+    menuSelect.addEventListener("change", renderCalendar);
     renderCalendar();
   </script>
 </body>
