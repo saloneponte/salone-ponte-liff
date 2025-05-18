@@ -1,255 +1,119 @@
+<!-- index.html – LIFF予約フォーム (Firebase v8対応・顧客登録付き) -->
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>予約フォーム - Salone Ponte</title>
+  <title>Salone Ponte 予約フォーム</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body {
-      font-family: sans-serif;
-      padding: 10px;
-    }
-    .calendar {
-      overflow-x: auto;
-      border-collapse: collapse;
-      width: 100%;
-    }
-    .calendar th, .calendar td {
-      border: 1px solid #ccc;
-      text-align: center;
-      padding: 8px;
-      min-width: 40px;
-    }
-    .calendar th {
-      background-color: #f0f0f0;
-    }
-    .available {
-      background-color: #cce5ff;
-      cursor: pointer;
-    }
-    .available:hover {
-      background-color: #99ccff;
-    }
-    .unavailable {
-      background-color: #f8d7da;
-      color: #721c24;
-      cursor: not-allowed;
-    }
-    .selected {
-      background-color: #007bff;
-      color: white;
-    }
-    .controls {
-      margin: 10px 0;
-    }
-    .submit {
-      display: block;
-      width: 100%;
-      padding: 10px;
-      background-color: #28a745;
-      color: white;
-      font-size: 16px;
-      border: none;
-      border-radius: 4px;
-      margin-top: 20px;
-      cursor: pointer;
-    }
+    body{font-family:sans-serif;padding:10px}
+    table{border-collapse:collapse;width:100%;margin-top:10px}
+    th,td{border:1px solid #ccc;padding:6px;text-align:center}
+    th{background:#f0f0f0}
+    .available{background:#cce5ff;cursor:pointer}
+    .available:hover{background:#99ccff}
+    .unavailable{background:#f8d7da;color:#721c24}
+    .selected{background:#007bff;color:#fff}
+    .submit{width:100%;padding:10px;background:#28a745;color:#fff;border:none;border-radius:4px;margin-top:15px;font-size:16px}
   </style>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import {
-      getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc,
-      query, where
-    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-    import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
-      authDomain: "salone-ponte-fceca.firebaseapp.com",
-      projectId: "salone-ponte-fceca",
-      storageBucket: "salone-ponte-fceca.appspot.com",
-      messagingSenderId: "463711728652",
-      appId: "1:463711728652:web:59c749e11d201b26b86a29",
-      measurementId: "G-MPWGTB6R7C"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    const calendarBody = document.getElementById("calendar-body");
-    const menuSelect = document.getElementById("menu");
-    const reserveBtn = document.getElementById("reserveBtn");
-
-    const durations = { cut: 60, color: 90, perm: 120 };
-    const times = [];
-    for (let hour = 10; hour <= 17; hour++) {
-      for (let min = 0; min < 60; min += 30) {
-        times.push(`${String(hour).padStart(2, '0')}:${min === 0 ? '00' : '30'}`);
-      }
-    }
-
-    let selectedDate = null;
-    let selectedTime = null;
-    let userId = "";
-    let userName = "";
-
-    async function renderCalendar() {
-      calendarBody.innerHTML = "";
-      reserveBtn.style.display = "none";
-
-      const selectedMenu = menuSelect.value;
-      const duration = durations[selectedMenu];
-      const existingReservations = await getDocs(query(collection(db, "reservations")));
-
-      const reservedSlots = [];
-      existingReservations.forEach(doc => {
-        const data = doc.data();
-        const start = new Date(data.datetime);
-        const end = new Date(start.getTime() + (durations[data.menu] || 60) * 60000);
-        reservedSlots.push({ start, end });
-      });
-
-      times.forEach(time => {
-        const tr = document.createElement("tr");
-        const timeCell = document.createElement("td");
-        timeCell.textContent = time;
-        tr.appendChild(timeCell);
-
-        for (let i = 0; i < 7; i++) {
-          const td = document.createElement("td");
-          const targetDate = new Date();
-          targetDate.setDate(targetDate.getDate() + i);
-          const [hours, minutes] = time.split(":");
-          targetDate.setHours(parseInt(hours));
-          targetDate.setMinutes(parseInt(minutes));
-          const endTime = new Date(targetDate.getTime() + duration * 60000);
-
-          const isOverlapping = reservedSlots.some(r =>
-            (targetDate < r.end && endTime > r.start)
-          );
-
-          if (isOverlapping) {
-            td.textContent = "×";
-            td.className = "unavailable";
-          } else {
-            td.textContent = "◯";
-            td.className = "available";
-            td.dataset.dayOffset = i;
-            td.dataset.time = time;
-            td.addEventListener("click", () => {
-              document.querySelectorAll(".selected").forEach(cell => cell.classList.remove("selected"));
-              td.classList.add("selected");
-              reserveBtn.style.display = "block";
-              selectedDate = new Date();
-              selectedDate.setDate(selectedDate.getDate() + parseInt(td.dataset.dayOffset));
-              selectedTime = td.dataset.time;
-            });
-          }
-          tr.appendChild(td);
-        }
-        calendarBody.appendChild(tr);
-      });
-    }
-
-    reserveBtn.addEventListener("click", async () => {
-      if (!selectedDate || !selectedTime) return;
-      const menu = menuSelect.value;
-      const reservationDateTime = new Date(selectedDate);
-      const [hours, minutes] = selectedTime.split(":");
-      reservationDateTime.setHours(parseInt(hours));
-      reservationDateTime.setMinutes(parseInt(minutes));
-
-      const result = {
-        userId: userId,
-        name: userName,
-        menu: menu,
-        datetime: reservationDateTime.toISOString(),
-        createdAt: new Date().toISOString()
-      };
-
-      try {
-        await addDoc(collection(db, "reservations"), result);
-
-        const customerRef = doc(db, "customers", userId);
-        const customerSnap = await getDoc(customerRef);
-
-        if (customerSnap.exists()) {
-          await updateDoc(customerRef, {
-            name: userName,
-            updatedAt: new Date().toISOString(),
-            reservations: [...(customerSnap.data().reservations || []), {
-              menu,
-              datetime: reservationDateTime.toISOString()
-            }]
-          });
-        } else {
-          await setDoc(customerRef, {
-            userId,
-            name: userName,
-            createdAt: new Date().toISOString(),
-            reservations: [
-              {
-                menu,
-                datetime: reservationDateTime.toISOString()
-              }
-            ]
-          });
-        }
-
-        alert(`${reservationDateTime.toLocaleString()} に予約が完了しました`);
-        renderCalendar();
-      } catch (e) {
-        console.error("Firestoreへの保存に失敗:", e);
-        alert("予約保存に失敗しました。再度お試しください。");
-      }
-    });
-
-    menuSelect.addEventListener("change", renderCalendar);
-
-    // LINEログインからユーザー情報取得
-    window.onload = async () => {
-      try {
-        await liff.init({ liffId: "2007345180-oVA2L6dw" });
-        if (!liff.isLoggedIn()) liff.login();
-        const profile = await liff.getProfile();
-        userId = profile.userId;
-        userName = profile.displayName;
-        renderCalendar();
-      } catch (err) {
-        console.error("LIFFエラー:", err);
-        alert("LINEアプリ内で開いてください。\nまたはLINEログインを確認してください。");
-      }
-    }
-  </script>
 </head>
 <body>
   <h2>ご予約カレンダー</h2>
-  <div class="controls">
-    <label>メニュー:
-      <select id="menu">
-        <option value="cut">カット</option>
-        <option value="color">カラー</option>
-        <option value="perm">パーマ</option>
-      </select>
-    </label>
-  </div>
-  <table class="calendar" id="calendar">
+  <label>メニュー:
+    <select id="menu">
+      <option value="cut">カット</option>
+      <option value="color">カラー</option>
+      <option value="perm">パーマ</option>
+    </select>
+  </label>
+  <table id="calendar">
     <thead>
-      <tr>
-        <th>時間</th>
-        <th>月</th>
-        <th>火</th>
-        <th>水</th>
-        <th>木</th>
-        <th>金</th>
-        <th>土</th>
-        <th>日</th>
-      </tr>
+      <tr><th>時間</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th><th>日</th></tr>
     </thead>
     <tbody id="calendar-body"></tbody>
   </table>
+  <button id="reserveBtn" class="submit" style="display:none">この内容で予約する</button>
 
-  <button id="reserveBtn" class="submit" style="display: none;">この内容で予約する</button>
+  <!-- SDK読み込み -->
+  <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script>
+    // Firebase設定
+    const firebaseConfig={
+      apiKey:"AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
+      authDomain:"salone-ponte-fceca.firebaseapp.com",
+      projectId:"salone-ponte-fceca"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db=firebase.firestore();
+
+    // LIFF初期化
+    let userId="",userName="";
+    (async()=>{
+      try{
+        await liff.init({liffId:"2007345180-oVA2L6dw"});
+        if(!liff.isLoggedIn()) return liff.login();
+        const profile=await liff.getProfile();
+        userId=profile.userId;
+        userName=profile.displayName;
+        renderCalendar();
+      }catch(e){alert("LINE内で開いてください");}
+    })();
+
+    // 予約ロジック
+    const durations={cut:60,color:90,perm:120};
+    const times=[];for(let h=10;h<=17;h++){for(let m=0;m<60;m+=30){times.push(`${String(h).padStart(2,'0')}:${m===0?'00':'30'}`);}}
+
+    const body=document.getElementById('calendar-body');
+    const menuSel=document.getElementById('menu');
+    const btn=document.getElementById('reserveBtn');
+    let selDate=null,selTime=null;
+
+    menuSel.onchange=()=>renderCalendar();
+
+    async function renderCalendar(){
+      body.innerHTML='';btn.style.display='none';selDate=selTime=null;
+      const duration=durations[menuSel.value];
+      // 直近の予約取得
+      const resSnap=await db.collection('reservations').get();
+      const reserved=[];
+      resSnap.forEach(d=>{const data=d.data();const start=new Date(data.datetime);const end=new Date(start.getTime()+(durations[data.menu]||60)*60000);reserved.push({start,end});});
+
+      times.forEach(t=>{
+        const tr=document.createElement('tr');
+        const tdTime=document.createElement('td');tdTime.textContent=t;tr.appendChild(tdTime);
+        for(let d=0;d<7;d++){
+          const cell=document.createElement('td');
+          const base=new Date();base.setDate(base.getDate()+d);const [hh,mm]=t.split(':');base.setHours(+hh, +mm,0,0);
+          const end=new Date(base.getTime()+duration*60000);
+          const overlap=reserved.some(r=>base<r.end&&end>r.start);
+          if(overlap){cell.textContent='×';cell.className='unavailable';}
+          else{cell.textContent='◯';cell.className='available';cell.onclick=()=>{document.querySelectorAll('.selected').forEach(c=>c.classList.remove('selected'));cell.classList.add('selected');selDate=new Date(base);selTime=t;btn.style.display='block';};}
+          tr.appendChild(cell);
+        }
+        body.appendChild(tr);
+      });
+    }
+
+    btn.onclick=async()=>{
+      if(!selDate)return;
+      const data={userId,name:userName,menu:menuSel.value,datetime:selDate.toISOString(),createdAt:new Date().toISOString()};
+      try{
+        // 予約保存
+        await db.collection('reservations').add(data);
+        // 顧客コレクション更新
+        const custRef=db.collection('customers').doc(userId);
+        const snap=await custRef.get();
+        if(snap.exists){
+          const arr=snap.data().reservations||[];arr.push({menu:data.menu,datetime:data.datetime});
+          await custRef.update({name:userName,reservations:arr});
+        }else{
+          await custRef.set({userId,name:userName,reservations:[{menu:data.menu,datetime:data.datetime}]});
+        }
+        alert('予約を受け付けました');renderCalendar();
+      }catch(e){alert('保存失敗:'+e.message);}
+    };
+  </script>
 </body>
 </html>
