@@ -1,9 +1,68 @@
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import {
-      getFirestore, collection, getDocs, query, orderBy
-    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-  
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ダッシュボード - Salone Ponte</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 10px;
+    }
+    .tabs {
+      display: flex;
+      margin-bottom: 20px;
+    }
+    .tab-button {
+      flex: 1;
+      padding: 10px;
+      cursor: pointer;
+      text-align: center;
+      background-color: #f0f0f0;
+      border: 1px solid #ccc;
+    }
+    .tab-button.active {
+      background-color: #007bff;
+      color: white;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
+    .history {
+      font-size: 12px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <div class="tabs">
+    <div id="reservations-btn" class="tab-button" onclick="switchTab('reservations')">予約管理</div>
+    <div id="customers-btn" class="tab-button" onclick="switchTab('customers')">顧客リスト</div>
+  </div>
+
+  <div id="reservations-content" class="tab-content"></div>
+  <div id="customers-content" class="tab-content"></div>
+
+  <!-- 🔽 スクリプトは最後に記載 -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
+  <script>
     const firebaseConfig = {
       apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
       authDomain: "salone-ponte-fceca.firebaseapp.com",
@@ -13,18 +72,17 @@
       appId: "1:463711728652:web:59c749e11d201b26b86a29",
       measurementId: "G-MPWGTB6R7C"
     };
-  
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-  
-    // ✅ 修正箇所：グローバル関数として定義
-    window.switchTab = function(tabId) {
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    function switchTab(tabId) {
       document.querySelectorAll(".tab-button").forEach(btn => btn.classList.remove("active"));
       document.querySelectorAll(".tab-content").forEach(div => div.classList.remove("active"));
       document.getElementById(tabId + "-btn").classList.add("active");
       document.getElementById(tabId + "-content").classList.add("active");
-    };
-  
+    }
+
     async function renderReservations() {
       const container = document.getElementById("reservations-content");
       container.innerHTML = "<h2>予約管理</h2>";
@@ -39,11 +97,11 @@
         </thead>
         <tbody id="reservations-body"></tbody>`;
       container.appendChild(table);
-  
-      const snapshot = await getDocs(query(collection(db, "reservations"), orderBy("datetime", "desc")));
+
+      const snapshot = await db.collection("reservations").orderBy("datetime", "desc").get();
       const tbody = document.getElementById("reservations-body");
-      snapshot.forEach(docSnap => {
-        const data = docSnap.data();
+      snapshot.forEach(doc => {
+        const data = doc.data();
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${data.name || "-"}</td>
@@ -53,7 +111,7 @@
         tbody.appendChild(tr);
       });
     }
-  
+
     async function renderCustomerList() {
       const container = document.getElementById("customers-content");
       container.innerHTML = "<h2>顧客リスト</h2>";
@@ -70,18 +128,18 @@
         </thead>
         <tbody id="customers-body"></tbody>`;
       container.appendChild(table);
-  
-      const snapshot = await getDocs(collection(db, "customers"));
+
+      const snapshot = await db.collection("customers").get();
       const tbody = document.getElementById("customers-body");
-      snapshot.forEach(docSnap => {
-        const data = docSnap.data();
+      snapshot.forEach(doc => {
+        const data = doc.data();
         const latest = data.reservations && data.reservations.length
           ? new Date(data.reservations[data.reservations.length - 1].datetime).toLocaleString()
           : "-";
         const history = (data.reservations || [])
           .map(r => `${new Date(r.datetime).toLocaleDateString()}：${r.menu}`)
           .join("<br>");
-  
+
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${data.name || "-"}</td>
@@ -93,11 +151,12 @@
         tbody.appendChild(tr);
       });
     }
-  
+
     window.onload = () => {
-      window.switchTab("reservations");
+      switchTab("reservations");
       renderReservations();
       renderCustomerList();
     };
   </script>
-  
+</body>
+</html>
