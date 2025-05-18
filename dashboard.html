@@ -59,9 +59,9 @@
   <div id="reservations-content" class="tab-content"></div>
   <div id="customers-content" class="tab-content"></div>
 
-  <!-- 🔽 スクリプトは最後に記載 -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
@@ -72,7 +72,6 @@
       appId: "1:463711728652:web:59c749e11d201b26b86a29",
       measurementId: "G-MPWGTB6R7C"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
@@ -98,18 +97,22 @@
         <tbody id="reservations-body"></tbody>`;
       container.appendChild(table);
 
-      const snapshot = await db.collection("reservations").orderBy("datetime", "desc").get();
-      const tbody = document.getElementById("reservations-body");
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${data.name || "-"}</td>
-          <td>${data.menu}</td>
-          <td>${new Date(data.datetime).toLocaleString()}</td>
-        `;
-        tbody.appendChild(tr);
-      });
+      try {
+        const snapshot = await db.collection("reservations").orderBy("datetime", "desc").get();
+        const tbody = document.getElementById("reservations-body");
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${data.name || "-"}</td>
+            <td>${data.menu}</td>
+            <td>${new Date(data.datetime).toLocaleString()}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (e) {
+        container.innerHTML += `<p style="color:red">予約の取得中にエラーが発生しました: ${e.message}</p>`;
+      }
     }
 
     async function renderCustomerList() {
