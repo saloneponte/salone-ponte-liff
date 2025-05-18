@@ -1,4 +1,3 @@
-<!-- index.html - カレンダー予約UI + Firestore保存対応 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -15,8 +14,7 @@
       border-collapse: collapse;
       width: 100%;
     }
-    .calendar th,
-    .calendar td {
+    .calendar th, .calendar td {
       border: 1px solid #ccc;
       text-align: center;
       padding: 8px;
@@ -31,6 +29,11 @@
     }
     .available:hover {
       background-color: #99ccff;
+    }
+    .unavailable {
+      background-color: #f8d7da;
+      color: #721c24;
+      cursor: not-allowed;
     }
     .selected {
       background-color: #007bff;
@@ -54,7 +57,7 @@
   </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
@@ -69,40 +72,62 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    window.addEventListener("DOMContentLoaded", () => {
-      const calendarBody = document.getElementById("calendar-body");
-      const menuSelect = document.getElementById("menu");
-      const reserveBtn = document.getElementById("reserveBtn");
+    const calendarBody = document.getElementById("calendar-body");
+    const menuSelect = document.getElementById("menu");
+    const reserveBtn = document.getElementById("reserveBtn");
 
-      const durations = {
-        cut: 60,
-        color: 90,
-        perm: 120
-      };
-
-      const times = [];
-      for (let hour = 10; hour <= 17; hour++) {
-        for (let min = 0; min < 60; min += 30) {
-          times.push(`${String(hour).padStart(2, '0')}:${min === 0 ? '00' : '30'}`);
-        }
+    const durations = { cut: 60, color: 90, perm: 120 };
+    const times = [];
+    for (let hour = 10; hour <= 17; hour++) {
+      for (let min = 0; min < 60; min += 30) {
+        times.push(`${String(hour).padStart(2, '0')}:${min === 0 ? '00' : '30'}`);
       }
+    }
 
-      let selectedDate = null;
-      let selectedTime = null;
+    let selectedDate = null;
+    let selectedTime = null;
 
-      function renderCalendar() {
-        calendarBody.innerHTML = "";
-        reserveBtn.style.display = "none";
-        times.forEach(time => {
-          const tr = document.createElement("tr");
-          const timeCell = document.createElement("td");
-          timeCell.textContent = time;
-          tr.appendChild(timeCell);
+    async function renderCalendar() {
+      calendarBody.innerHTML = "";
+      reserveBtn.style.display = "none";
 
-          for (let i = 0; i < 7; i++) {
-            const td = document.createElement("td");
-            td.className = "available";
+      const selectedMenu = menuSelect.value;
+      const duration = durations[selectedMenu];
+      const existingReservations = await getDocs(query(collection(db, "reservations")));
+
+      const reservedSlots = [];
+      existingReservations.forEach(doc => {
+        const data = doc.data();
+        const start = new Date(data.datetime);
+        const end = new Date(start.getTime() + (durations[data.menu] || 60) * 60000);
+        reservedSlots.push({ start, end });
+      });
+
+      times.forEach(time => {
+        const tr = document.createElement("tr");
+        const timeCell = document.createElement("td");
+        timeCell.textContent = time;
+        tr.appendChild(timeCell);
+
+        for (let i = 0; i < 7; i++) {
+          const td = document.createElement("td");
+          const targetDate = new Date();
+          targetDate.setDate(targetDate.getDate() + i);
+          const [hours, minutes] = time.split(":");
+          targetDate.setHours(parseInt(hours));
+          targetDate.setMinutes(parseInt(minutes));
+          const endTime = new Date(targetDate.getTime() + duration * 60000);
+
+          const isOverlapping = reservedSlots.some(r =>
+            (targetDate < r.end && endTime > r.start)
+          );
+
+          if (isOverlapping) {
+            td.textContent = "×";
+            td.className = "unavailable";
+          } else {
             td.textContent = "◯";
+            td.className = "available";
             td.dataset.dayOffset = i;
             td.dataset.time = time;
             td.addEventListener("click", () => {
@@ -113,38 +138,39 @@
               selectedDate.setDate(selectedDate.getDate() + parseInt(td.dataset.dayOffset));
               selectedTime = td.dataset.time;
             });
-            tr.appendChild(td);
           }
-          calendarBody.appendChild(tr);
-        });
-      }
-
-      reserveBtn.addEventListener("click", async () => {
-        if (!selectedDate || !selectedTime) return;
-        const menu = menuSelect.value;
-        const reservationDateTime = new Date(selectedDate);
-        const [hours, minutes] = selectedTime.split(":");
-        reservationDateTime.setHours(parseInt(hours));
-        reservationDateTime.setMinutes(parseInt(minutes));
-
-        const result = {
-          menu: menu,
-          datetime: reservationDateTime.toISOString(),
-          createdAt: new Date().toISOString()
-        };
-
-        try {
-          await addDoc(collection(db, "reservations"), result);
-          alert(`${reservationDateTime.toLocaleString()} に予約が完了しました`);
-        } catch (e) {
-          console.error("Firestoreへの保存に失敗:", e);
-          alert("予約保存に失敗しました。再度お試しください。");
+          tr.appendChild(td);
         }
+        calendarBody.appendChild(tr);
       });
+    }
 
-      menuSelect.addEventListener("change", renderCalendar);
-      renderCalendar();
+    reserveBtn.addEventListener("click", async () => {
+      if (!selectedDate || !selectedTime) return;
+      const menu = menuSelect.value;
+      const reservationDateTime = new Date(selectedDate);
+      const [hours, minutes] = selectedTime.split(":");
+      reservationDateTime.setHours(parseInt(hours));
+      reservationDateTime.setMinutes(parseInt(minutes));
+
+      const result = {
+        menu: menu,
+        datetime: reservationDateTime.toISOString(),
+        createdAt: new Date().toISOString()
+      };
+
+      try {
+        await addDoc(collection(db, "reservations"), result);
+        alert(`${reservationDateTime.toLocaleString()} に予約が完了しました`);
+        renderCalendar();
+      } catch (e) {
+        console.error("Firestoreへの保存に失敗:", e);
+        alert("予約保存に失敗しました。再度お試しください。");
+      }
     });
+
+    menuSelect.addEventListener("change", renderCalendar);
+    renderCalendar();
   </script>
 </head>
 <body>
