@@ -1,138 +1,109 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
   <title>予約フォーム - Salone Ponte</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, collection, getDocs, addDoc, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.3/build/global/luxon.min.js"></script>
+</head>
+<body class="bg-gray-50 p-4">
+  <h2 class="text-xl font-bold mb-4">ご予約フォーム</h2>
+  <form id="form" class="space-y-4">
+    <div>
+      <label class="block font-medium">お名前</label>
+      <input type="text" id="name" required class="border rounded p-2 w-full">
+    </div>
+    <div>
+      <label class="block font-medium">電話番号</label>
+      <input type="tel" id="phone" required class="border rounded p-2 w-full">
+    </div>
+    <div>
+      <label class="block font-medium">スタッフ</label>
+      <select id="staff" required class="border rounded p-2 w-full">
+        <option value="">選択してください</option>
+        <option value="staff1">スタッフA</option>
+        <option value="staff2">スタッフB</option>
+      </select>
+    </div>
+    <div>
+      <label class="block font-medium">メニュー</label>
+      <select id="menu" required class="border rounded p-2 w-full">
+        <option value="">選択してください</option>
+        <option value="cut">カット（60分）</option>
+        <option value="color">カラー（90分）</option>
+        <option value="perm">パーマ（90分）</option>
+      </select>
+    </div>
+    <div>
+      <label class="block font-medium">予約日時</label>
+      <div id="calendar" class="space-y-2"></div>
+    </div>
+    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">予約する</button>
+  </form>
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
-      authDomain: "salone-ponte-fceca.firebaseapp.com",
-      projectId: "salone-ponte-fceca",
-      storageBucket: "salone-ponte-fceca.firebasestorage.app",
-      messagingSenderId: "463711728652",
-      appId: "1:463711728652:web:59c749e11d201b26b86a29",
-      measurementId: "G-MPWGTB6R7C"
-    };
+  <script>
+    const DateTime = luxon.DateTime;
+    const calendarElement = document.getElementById("calendar");
+    const menuDurations = { cut: 60, color: 90, perm: 90 };
+    const availableTimes = ["10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30"];
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    document.getElementById("menu").addEventListener("change", updateCalendar);
+    document.getElementById("staff").addEventListener("change", updateCalendar);
 
-    let shopId = "default-shop";
-    let userId = "";
-
-    async function main() {
-      const params = new URLSearchParams(location.search);
-      shopId = params.get("shop") || "default-shop";
-
-      await liff.init({ liffId: "2007345180-oVA2L6dw" });
-      if (!liff.isLoggedIn()) {
-        liff.login();
-        return;
-      }
-      const profile = await liff.getProfile();
-      userId = profile.userId;
-
-      await loadMenuDurations();
-    }
-
-    async function loadMenuDurations() {
-      const menuSelect = document.getElementById("menu");
-      menuSelect.innerHTML = '<option value="">選択してください</option>';
-
-      const snapshot = await getDocs(collection(db, "menuDurations"));
-      snapshot.forEach(doc => {
-        const option = document.createElement("option");
-        option.value = doc.id;
-        option.textContent = doc.id;
-        menuSelect.appendChild(option);
-      });
-    }
-
-    async function updateAvailableTimes() {
+    function updateCalendar() {
+      const staff = document.getElementById("staff").value;
       const menu = document.getElementById("menu").value;
-      const date = document.getElementById("date").value;
-      const timeSelect = document.getElementById("time");
-      timeSelect.innerHTML = '';
-      if (!menu || !date) return;
+      calendarElement.innerHTML = "";
 
-      const durationDoc = await getDoc(doc(db, "menuDurations", menu));
-      if (!durationDoc.exists()) return;
-      const duration = durationDoc.data().duration;
+      if (!staff || !menu) return;
 
-      const startHour = 10; // 開店時間
-      const endHour = 19;  // 閉店時間
-      const interval = 30; // 分単位で区切る
+      const today = DateTime.now().startOf("day");
+      for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+        const day = today.plus({ days: dayOffset });
+        const dayLabel = document.createElement("div");
+        dayLabel.className = "font-semibold text-sm mt-4";
+        dayLabel.textContent = `${day.toFormat("M月d日 (ccc)")}`;
+        calendarElement.appendChild(dayLabel);
 
-      const q = query(collection(db, "reservations"), where("shopId", "==", shopId));
-      const snapshot = await getDocs(q);
-      const reservedSlots = snapshot.docs.map(d => ({
-        start: new Date(d.data().datetime),
-        duration: (await getDoc(doc(db, "menuDurations", d.data().menu))).data().duration
-      }));
+        const grid = document.createElement("div");
+        grid.className = "grid grid-cols-4 gap-2 mt-2";
 
-      for (let h = startHour; h < endHour; h++) {
-        for (let m = 0; m < 60; m += interval) {
-          const dateTime = new Date(`${date}T${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:00`);
-          const dateTimeEnd = new Date(dateTime.getTime() + duration * 60000);
-
-          const overlaps = reservedSlots.some(r => {
-            const rEnd = new Date(r.start.getTime() + r.duration * 60000);
-            return (dateTime < rEnd && dateTimeEnd > r.start);
+        availableTimes.forEach(timeStr => {
+          const dt = DateTime.fromFormat(`${day.toFormat("yyyy-MM-dd")} ${timeStr}`, "yyyy-MM-dd HH:mm");
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.textContent = timeStr;
+          btn.className = "text-xs py-1 px-2 rounded border text-center bg-green-100 hover:bg-green-200";
+          btn.addEventListener("click", () => {
+            document.querySelectorAll(".selected").forEach(el => el.classList.remove("bg-blue-500", "text-white", "selected"));
+            btn.classList.add("bg-blue-500", "text-white", "selected");
+            btn.dataset.selected = dt.toISO();
           });
-
-          if (!overlaps) {
-            const option = document.createElement("option");
-            option.value = dateTime.toISOString();
-            option.textContent = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-            timeSelect.appendChild(option);
-          }
-        }
+          grid.appendChild(btn);
+        });
+        calendarElement.appendChild(grid);
       }
     }
 
-    document.getElementById("menu").addEventListener("change", updateAvailableTimes);
-    document.getElementById("date").addEventListener("change", updateAvailableTimes);
-
-    document.getElementById("form").addEventListener("submit", async (e) => {
+    document.getElementById("form").addEventListener("submit", e => {
       e.preventDefault();
+      const selectedBtn = document.querySelector(".selected");
+      if (!selectedBtn) return alert("予約時間を選択してください。");
+
       const data = {
-        shopId,
-        userId,
         name: document.getElementById("name").value,
         phone: document.getElementById("phone").value,
         menu: document.getElementById("menu").value,
-        datetime: document.getElementById("time").value,
+        staff: document.getElementById("staff").value,
+        datetime: selectedBtn.dataset.selected,
         createdAt: new Date().toISOString(),
         status: "pending"
       };
 
-      try {
-        await addDoc(collection(db, "reservations"), data);
-        alert("ご予約ありがとうございました！");
-        liff.closeWindow();
-      } catch (err) {
-        console.error("Firestore書き込みエラー:", err);
-        alert("予約保存に失敗しました。");
-      }
+      console.log("予約データ：", data);
+      alert("ご予約ありがとうございました！");
     });
-
-    main();
   </script>
-</head>
-<body>
-  <h2>ご予約フォーム</h2>
-  <form id="form">
-    <label>お名前：<input type="text" id="name" required></label><br><br>
-    <label>電話番号：<input type="tel" id="phone" required></label><br><br>
-    <label>メニュー：<select id="menu" required></select></label><br><br>
-    <label>日付：<input type="date" id="date" required></label><br><br>
-    <label>時間帯：<select id="time" required></select></label><br><br>
-    <button type="submit">予約する</button>
-  </form>
 </body>
 </html>
