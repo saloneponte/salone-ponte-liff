@@ -2,108 +2,114 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>予約フォーム - Salone Ponte</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.3/build/global/luxon.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>予約カレンダー</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 10px;
+    }
+    select, button {
+      font-size: 1.2em;
+      margin: 0.5em 0;
+      width: 100%;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1em;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      text-align: center;
+      padding: 5px;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
+    .available {
+      background-color: #c8facc;
+      cursor: pointer;
+    }
+    .booked {
+      background-color: #f9caca;
+      cursor: not-allowed;
+    }
+    .time-col {
+      font-weight: bold;
+      background-color: #f9f9f9;
+    }
+    .selected {
+      outline: 3px solid #007aff;
+    }
+  </style>
 </head>
-<body class="bg-gray-50 p-4">
-  <h2 class="text-xl font-bold mb-4">ご予約フォーム</h2>
-  <form id="form" class="space-y-4">
-    <div>
-      <label class="block font-medium">お名前</label>
-      <input type="text" id="name" required class="border rounded p-2 w-full">
-    </div>
-    <div>
-      <label class="block font-medium">電話番号</label>
-      <input type="tel" id="phone" required class="border rounded p-2 w-full">
-    </div>
-    <div>
-      <label class="block font-medium">スタッフ</label>
-      <select id="staff" required class="border rounded p-2 w-full">
-        <option value="">選択してください</option>
-        <option value="staff1">スタッフA</option>
-        <option value="staff2">スタッフB</option>
-      </select>
-    </div>
-    <div>
-      <label class="block font-medium">メニュー</label>
-      <select id="menu" required class="border rounded p-2 w-full">
-        <option value="">選択してください</option>
-        <option value="cut">カット（60分）</option>
-        <option value="color">カラー（90分）</option>
-        <option value="perm">パーマ（90分）</option>
-      </select>
-    </div>
-    <div>
-      <label class="block font-medium">予約日時</label>
-      <div id="calendar" class="space-y-2"></div>
-    </div>
-    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">予約する</button>
-  </form>
+<body>
+  <h2>予約カレンダー</h2>
+
+  <label for="menu">メニュー選択：</label>
+  <select id="menu">
+    <option value="">選択してください</option>
+    <option value="cut">カット（30分）</option>
+    <option value="color">カラー（60分）</option>
+    <option value="perm">パーマ（90分）</option>
+  </select>
+
+  <label for="staff">スタッフ選択：</label>
+  <select id="staff">
+    <option value="">選択してください</option>
+    <option value="staffA">スタッフA</option>
+    <option value="staffB">スタッフB</option>
+  </select>
+
+  <table id="calendar"></table>
 
   <script>
-    const DateTime = luxon.DateTime;
-    const calendarElement = document.getElementById("calendar");
-    const menuDurations = { cut: 60, color: 90, perm: 90 };
-    const availableTimes = ["10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30"];
+    const calendar = document.getElementById("calendar");
+    const menuDurations = { cut: 30, color: 60, perm: 90 };
+    const timeSlots = Array.from({ length: 16 }, (_, i) => `${String(10 + Math.floor(i / 2)).padStart(2, '0')}:${i % 2 === 0 ? '00' : '30'}`);
 
-    document.getElementById("menu").addEventListener("change", updateCalendar);
-    document.getElementById("staff").addEventListener("change", updateCalendar);
-
-    function updateCalendar() {
-      const staff = document.getElementById("staff").value;
+    function generateCalendar() {
       const menu = document.getElementById("menu").value;
-      calendarElement.innerHTML = "";
+      const staff = document.getElementById("staff").value;
+      if (!menu || !staff) return calendar.innerHTML = "";
 
-      if (!staff || !menu) return;
-
-      const today = DateTime.now().startOf("day");
-      for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
-        const day = today.plus({ days: dayOffset });
-        const dayLabel = document.createElement("div");
-        dayLabel.className = "font-semibold text-sm mt-4";
-        dayLabel.textContent = `${day.toFormat("M月d日 (ccc)")}`;
-        calendarElement.appendChild(dayLabel);
-
-        const grid = document.createElement("div");
-        grid.className = "grid grid-cols-4 gap-2 mt-2";
-
-        availableTimes.forEach(timeStr => {
-          const dt = DateTime.fromFormat(`${day.toFormat("yyyy-MM-dd")} ${timeStr}`, "yyyy-MM-dd HH:mm");
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.textContent = timeStr;
-          btn.className = "text-xs py-1 px-2 rounded border text-center bg-green-100 hover:bg-green-200";
-          btn.addEventListener("click", () => {
-            document.querySelectorAll(".selected").forEach(el => el.classList.remove("bg-blue-500", "text-white", "selected"));
-            btn.classList.add("bg-blue-500", "text-white", "selected");
-            btn.dataset.selected = dt.toISO();
-          });
-          grid.appendChild(btn);
+      const days = [];
+      const today = new Date();
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(today);
+        d.setDate(d.getDate() + i);
+        days.push({
+          label: `${d.getMonth() + 1}/${d.getDate()} (${"日月火水木金土"[d.getDay()]})`,
+          date: d.toISOString().split("T")[0],
         });
-        calendarElement.appendChild(grid);
       }
+
+      let html = "<tr><th></th>" + days.map(d => `<th>${d.label}</th>`).join("") + "</tr>";
+      timeSlots.forEach(time => {
+        html += `<tr><td class='time-col'>${time}</td>`;
+        days.forEach(day => {
+          html += `<td class="available" data-date="${day.date}" data-time="${time}">○</td>`;
+        });
+        html += "</tr>";
+      });
+      calendar.innerHTML = html;
+
+      // click event
+      document.querySelectorAll("td.available").forEach(td => {
+        td.addEventListener("click", () => {
+          document.querySelectorAll("td").forEach(c => c.classList.remove("selected"));
+          td.classList.add("selected");
+          const selectedDate = td.getAttribute("data-date");
+          const selectedTime = td.getAttribute("data-time");
+          alert(`予約日時: ${selectedDate} ${selectedTime}`);
+          // TODO: Firebase保存処理
+        });
+      });
     }
 
-    document.getElementById("form").addEventListener("submit", e => {
-      e.preventDefault();
-      const selectedBtn = document.querySelector(".selected");
-      if (!selectedBtn) return alert("予約時間を選択してください。");
-
-      const data = {
-        name: document.getElementById("name").value,
-        phone: document.getElementById("phone").value,
-        menu: document.getElementById("menu").value,
-        staff: document.getElementById("staff").value,
-        datetime: selectedBtn.dataset.selected,
-        createdAt: new Date().toISOString(),
-        status: "pending"
-      };
-
-      console.log("予約データ：", data);
-      alert("ご予約ありがとうございました！");
-    });
+    document.getElementById("menu").addEventListener("change", generateCalendar);
+    document.getElementById("staff").addEventListener("change", generateCalendar);
   </script>
 </body>
 </html>
