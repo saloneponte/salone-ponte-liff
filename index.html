@@ -1,17 +1,18 @@
-<!-- index.html – LIFF予約フォーム (Firebase v8対応・顧客登録付き) -->
+<!-- index.html – 週ナビゲーション付きカレンダー -->
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Salone Ponte 予約フォーム</title>
+  <title>Salone Ponte 予約フォーム</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body{font-family:sans-serif;padding:10px}
-    table{border-collapse:collapse;width:100%;margin-top:10px}
+    .nav{display:flex;justify-content:space-between;margin:10px 0}
+    .nav button{padding:4px 10px;border:1px solid #ccc;background:#f0f0f0;cursor:pointer;border-radius:4px}
+    table{border-collapse:collapse;width:100%}
     th,td{border:1px solid #ccc;padding:6px;text-align:center}
-    th{background:#f0f0f0}
-    .available{background:#cce5ff;cursor:pointer}
-    .available:hover{background:#99ccff}
+    th{background:#f0f0f0;font-size:12px}
+    .available{background:#cce5ff;cursor:pointer}.available:hover{background:#99ccff}
     .unavailable{background:#f8d7da;color:#721c24}
     .selected{background:#007bff;color:#fff}
     .submit{width:100%;padding:10px;background:#28a745;color:#fff;border:none;border-radius:4px;margin-top:15px;font-size:16px}
@@ -26,70 +27,64 @@
       <option value="perm">パーマ</option>
     </select>
   </label>
+
+  <div class="nav">
+    <button id="prevWeek">&lt; 前週</button>
+    <div id="weekLabel"></div>
+    <button id="nextWeek">次週 &gt;</button>
+  </div>
+
   <table id="calendar">
-    <thead>
-      <tr><th>時間</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th><th>日</th></tr>
-    </thead>
+    <thead id="calendar-head"></thead>
     <tbody id="calendar-body"></tbody>
   </table>
   <button id="reserveBtn" class="submit" style="display:none">この内容で予約する</button>
 
-  <!-- SDK読み込み -->
   <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
   <script>
-    // Firebase設定
-    const firebaseConfig={
-      apiKey:"AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
-      authDomain:"salone-ponte-fceca.firebaseapp.com",
-      projectId:"salone-ponte-fceca"
-    };
+    const firebaseConfig={apiKey:"AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",projectId:"salone-ponte-fceca"};
     firebase.initializeApp(firebaseConfig);
     const db=firebase.firestore();
 
-    // LIFF初期化
-    let userId="",userName="";
-    (async()=>{
-      try{
-        await liff.init({liffId:"2007345180-oVA2L6dw"});
-        if(!liff.isLoggedIn()) return liff.login();
-        const profile=await liff.getProfile();
-        userId=profile.userId;
-        userName=profile.displayName;
-        renderCalendar();
-      }catch(e){alert("LINE内で開いてください");}
-    })();
-
-    // 予約ロジック
     const durations={cut:60,color:90,perm:120};
     const times=[];for(let h=10;h<=17;h++){for(let m=0;m<60;m+=30){times.push(`${String(h).padStart(2,'0')}:${m===0?'00':'30'}`);}}
 
+    let offsetWeeks=0,selDate=null,selTime=null,userId="",userName="";
+    const weekLabel=document.getElementById('weekLabel');
+    const head=document.getElementById('calendar-head');
     const body=document.getElementById('calendar-body');
     const menuSel=document.getElementById('menu');
     const btn=document.getElementById('reserveBtn');
-    let selDate=null,selTime=null;
 
-    menuSel.onchange=()=>renderCalendar();
+    document.getElementById('prevWeek').onclick=()=>{offsetWeeks--;renderCalendar();};
+    document.getElementById('nextWeek').onclick=()=>{offsetWeeks++;renderCalendar();};
+    menuSel.onchange=renderCalendar;
 
-    async function renderCalendar(){
-      body.innerHTML='';btn.style.display='none';selDate=selTime=null;
-      const duration=durations[menuSel.value];
-      // 直近の予約取得
-      const resSnap=await db.collection('reservations').get();
-      const reserved=[];
-      resSnap.forEach(d=>{const data=d.data();const start=new Date(data.datetime);const end=new Date(start.getTime()+(durations[data.menu]||60)*60000);reserved.push({start,end});});
+    function getStartOfWeek(){const d=new Date();d.setDate(d.getDate()+offsetWeeks*7);return d;}
+    function formatDate(d){return `${d.getMonth()+1}/${d.getDate()}(${"日月火水木金土"[d.getDay()]})`;}
 
+    async function renderCalendar(){body.innerHTML='';head.innerHTML='';btn.style.display='none';selDate=null;
+      const startWeek=getStartOfWeek();const endWeek=new Date(startWeek);endWeek.setDate(endWeek.getDate()+6);
+      weekLabel.textContent=`${formatDate(startWeek)} - ${formatDate(endWeek)}`;
+      // header row
+      const hr=document.createElement('tr');hr.innerHTML='<th>時間</th>';
+      for(let i=0;i<7;i++){const d=new Date(startWeek);d.setDate(startWeek.getDate()+i);hr.innerHTML+=`<th>${formatDate(d)}</th>`;}
+      head.appendChild(hr);
+      // fetch reservations for displayed week
+      const weekStartISO=startWeek.toISOString();const weekEndISO=new Date(endWeek.getFullYear(),endWeek.getMonth(),endWeek.getDate(),23,59,59).toISOString();
+      const snap=await db.collection('reservations').where('datetime','>=',weekStartISO).where('datetime','<=',weekEndISO).get();
+      const reserved=[];snap.forEach(doc=>{const data=doc.data();const st=new Date(data.datetime);const en=new Date(st.getTime()+(durations[data.menu]||60)*60000);reserved.push({st,en});});
+      const dur=durations[menuSel.value];
       times.forEach(t=>{
-        const tr=document.createElement('tr');
-        const tdTime=document.createElement('td');tdTime.textContent=t;tr.appendChild(tdTime);
-        for(let d=0;d<7;d++){
-          const cell=document.createElement('td');
-          const base=new Date();base.setDate(base.getDate()+d);const [hh,mm]=t.split(':');base.setHours(+hh, +mm,0,0);
-          const end=new Date(base.getTime()+duration*60000);
-          const overlap=reserved.some(r=>base<r.end&&end>r.start);
+        const tr=document.createElement('tr');tr.innerHTML=`<td>${t}</td>`;
+        for(let i=0;i<7;i++){
+          const cell=document.createElement('td');const d=new Date(startWeek);d.setDate(startWeek.getDate()+i);
+          const [hh,mm]=t.split(':');d.setHours(+hh,+mm,0,0);const end=new Date(d.getTime()+dur*60000);
+          const overlap=reserved.some(r=>d<r.en&&end>r.st);
           if(overlap){cell.textContent='×';cell.className='unavailable';}
-          else{cell.textContent='◯';cell.className='available';cell.onclick=()=>{document.querySelectorAll('.selected').forEach(c=>c.classList.remove('selected'));cell.classList.add('selected');selDate=new Date(base);selTime=t;btn.style.display='block';};}
+          else{cell.textContent='◯';cell.className='available';cell.onclick=()=>{document.querySelectorAll('.selected').forEach(c=>c.classList.remove('selected'));cell.classList.add('selected');selDate=new Date(d);selTime=t;btn.style.display='block';};}
           tr.appendChild(cell);
         }
         body.appendChild(tr);
@@ -97,23 +92,16 @@
     }
 
     btn.onclick=async()=>{
-      if(!selDate)return;
-      const data={userId,name:userName,menu:menuSel.value,datetime:selDate.toISOString(),createdAt:new Date().toISOString()};
-      try{
-        // 予約保存
-        await db.collection('reservations').add(data);
-        // 顧客コレクション更新
-        const custRef=db.collection('customers').doc(userId);
-        const snap=await custRef.get();
-        if(snap.exists){
-          const arr=snap.data().reservations||[];arr.push({menu:data.menu,datetime:data.datetime});
-          await custRef.update({name:userName,reservations:arr});
-        }else{
-          await custRef.set({userId,name:userName,reservations:[{menu:data.menu,datetime:data.datetime}]});
-        }
-        alert('予約を受け付けました');renderCalendar();
-      }catch(e){alert('保存失敗:'+e.message);}
+      if(!selDate)return;const data={userId,name:userName,menu:menuSel.value,datetime:selDate.toISOString(),createdAt:new Date().toISOString()};
+      await db.collection('reservations').add(data);
+      const custRef=db.collection('customers').doc(userId);const snap=await custRef.get();
+      if(snap.exists){const arr=snap.data().reservations||[];arr.push({menu:data.menu,datetime:data.datetime});await custRef.update({name:userName,reservations:arr});}
+      else{await custRef.set({userId,name:userName,reservations:[{menu:data.menu,datetime:data.datetime}]});}
+      alert('予約完了');renderCalendar();
     };
+
+    // LIFF init
+    (async()=>{await liff.init({liffId:'2007345180-oVA2L6dw'});if(!liff.isLoggedIn())return liff.login();const p=await liff.getProfile();userId=p.userId;userName=p.displayName;renderCalendar();})();
   </script>
 </body>
 </html>
