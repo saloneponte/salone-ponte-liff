@@ -19,6 +19,9 @@
   </style>
 </head>
 <body>
+    <label>お名前：<input id="userNameInput" type="text" placeholder="例）佐藤花子"></label><br>
+<label>電話番号：<input id="userPhoneInput" type="tel" placeholder="例）09012345678"></label><br>
+
   <h2>ご予約カレンダー</h2>
   <label>メニュー:
     <select id="menu">
@@ -65,40 +68,78 @@
     function getStartOfWeek(){const d=new Date();d.setDate(d.getDate()+offsetWeeks*7);return d;}
     function formatDate(d){return `${d.getMonth()+1}/${d.getDate()}(${"日月火水木金土"[d.getDay()]})`;}
 
-    async function renderCalendar(){body.innerHTML='';head.innerHTML='';btn.style.display='none';selDate=null;
-      const startWeek=getStartOfWeek();const endWeek=new Date(startWeek);endWeek.setDate(endWeek.getDate()+6);
-      weekLabel.textContent=`${formatDate(startWeek)} - ${formatDate(endWeek)}`;
-      // header row
-      const hr=document.createElement('tr');hr.innerHTML='<th>時間</th>';
-      for(let i=0;i<7;i++){const d=new Date(startWeek);d.setDate(startWeek.getDate()+i);hr.innerHTML+=`<th>${formatDate(d)}</th>`;}
-      head.appendChild(hr);
-      // fetch reservations for displayed week
-      const weekStartISO=startWeek.toISOString();const weekEndISO=new Date(endWeek.getFullYear(),endWeek.getMonth(),endWeek.getDate(),23,59,59).toISOString();
-      const snap=await db.collection('reservations').where('datetime','>=',weekStartISO).where('datetime','<=',weekEndISO).get();
-      const reserved=[];snap.forEach(doc=>{const data=doc.data();const st=new Date(data.datetime);const en=new Date(st.getTime()+(durations[data.menu]||60)*60000);reserved.push({st,en});});
-      const dur=durations[menuSel.value];
-      times.forEach(t=>{
-        const tr=document.createElement('tr');tr.innerHTML=`<td>${t}</td>`;
-        for(let i=0;i<7;i++){
-          const cell=document.createElement('td');const d=new Date(startWeek);d.setDate(startWeek.getDate()+i);
-          const [hh,mm]=t.split(':');d.setHours(+hh,+mm,0,0);const end=new Date(d.getTime()+dur*60000);
-          const overlap=reserved.some(r=>d<r.en&&end>r.st);
-          if(overlap){cell.textContent='×';cell.className='unavailable';}
-          else{cell.textContent='◯';cell.className='available';cell.onclick=()=>{document.querySelectorAll('.selected').forEach(c=>c.classList.remove('selected'));cell.classList.add('selected');selDate=new Date(d);selTime=t;btn.style.display='block';};}
-          tr.appendChild(cell);
-        }
-        body.appendChild(tr);
+    async function renderCustomers() {
+  const tbody = document.getElementById('customer-body');
+  tbody.innerHTML = '';
+  const snap = await db.collection('customers').orderBy('name').get();
+
+  snap.forEach(doc => {
+    const c = doc.data();
+    const last = c.reservations?.slice(-1)[0];       // 最新来店
+    const tr  = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${c.name}</td>
+      <td>${c.phone || '-'}</td>
+      <td>${last ? new Date(last.datetime).toLocaleDateString() : '-'}</td>
+      <td>${last ? last.menu : '-'}</td>
+      <td><button data-id="${doc.id}">詳細</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+
+    btn.onclick = async () => {
+  // ---- ① 入力値を取得 ----
+  const nameInput  = document.getElementById('userNameInput').value.trim() || userName;
+  const phoneInput = document.getElementById('userPhoneInput').value.trim() || "";
+
+  if (!selDate) return;              // 日時が未選択なら何もしない
+
+  // ---- ② 保存する予約データ ----
+  const data = {
+    userId,
+    name:  nameInput,
+    phone: phoneInput,
+    menu:  menuSel.value,
+    datetime: selDate.toISOString(),
+    createdAt: new Date().toISOString()
+  };
+
+  try {
+    // ---- ③ reservations に追加 ----
+    await db.collection('reservations').add(data);
+
+    // ---- ④ customers を作成 / 更新 ----
+    const custRef = db.collection('customers').doc(userId);
+    const snap    = await custRef.get();
+
+    if (snap.exists) {
+      const arr = snap.data().reservations || [];
+      arr.push({ menu: data.menu, datetime: data.datetime });
+
+      await custRef.update({
+        name:  nameInput,
+        phone: phoneInput,
+        reservations: arr
+      });
+    } else {
+      await custRef.set({
+        userId,
+        name:  nameInput,
+        phone: phoneInput,
+        reservations: [
+          { menu: data.menu, datetime: data.datetime }
+        ]
       });
     }
 
-    btn.onclick=async()=>{
-      if(!selDate)return;const data={userId,name:userName,menu:menuSel.value,datetime:selDate.toISOString(),createdAt:new Date().toISOString()};
-      await db.collection('reservations').add(data);
-      const custRef=db.collection('customers').doc(userId);const snap=await custRef.get();
-      if(snap.exists){const arr=snap.data().reservations||[];arr.push({menu:data.menu,datetime:data.datetime});await custRef.update({name:userName,reservations:arr});}
-      else{await custRef.set({userId,name:userName,reservations:[{menu:data.menu,datetime:data.datetime}]});}
-      alert('予約完了');renderCalendar();
-    };
+    alert('予約を受け付けました');
+    renderCalendar();                // カレンダーを再描画（枠を×にする）
+  } catch (e) {
+    alert('予約保存に失敗しました：' + e.message);
+  }
+};
+
 
     // LIFF init
     (async()=>{await liff.init({liffId:'2007345180-oVA2L6dw'});if(!liff.isLoggedIn())return liff.login();const p=await liff.getProfile();userId=p.userId;userName=p.displayName;renderCalendar();})();
