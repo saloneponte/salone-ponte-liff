@@ -1,97 +1,331 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>ダッシュボード - Salone Ponte</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
+    /* ======= 全体レイアウト ======= */
     body {
+      margin: 0;
+      padding: 0;
       font-family: sans-serif;
+      background: #f9f9f9;
+      color: #333;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
       padding: 10px;
     }
+    h1 {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 24px;
+    }
+
+    /* ======= タブ ======= */
     .tabs {
       display: flex;
-      margin-bottom: 20px;
+      border-bottom: 2px solid #ddd;
+      margin-top: 20px;
     }
     .tab-button {
       flex: 1;
-      padding: 10px;
-      cursor: pointer;
+      padding: 12px 0;
       text-align: center;
-      background-color: #f0f0f0;
-      border: 1px solid #ccc;
+      cursor: pointer;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-bottom: none;
+      font-weight: bold;
+      transition: background 0.2s;
     }
     .tab-button.active {
-      background-color: #007bff;
-      color: white;
+      background: #007bff;
+      color: #fff;
+      border-color: #007bff;
     }
     .tab-content {
       display: none;
+      background: #fff;
+      padding: 16px;
+      border: 1px solid #ddd;
+      border-top: none;
+      margin-bottom: 20px;
     }
     .tab-content.active {
       display: block;
     }
+
+    /* ======= テーブル共通 ======= */
+    .table-wrapper {
+      overflow-x: auto;
+      margin-top: 10px;
+    }
     table {
       border-collapse: collapse;
       width: 100%;
-      margin-top: 10px;
+      min-width: 700px;
     }
     th, td {
       border: 1px solid #ccc;
-      padding: 8px;
+      padding: 8px 12px;
       text-align: left;
+      white-space: nowrap;
     }
     th {
-      background-color: #f0f0f0;
+      background: #f0f0f0;
+      position: sticky;
+      top: 0;
+      z-index: 2;
     }
-    .history {
-      font-size: 12px;
-      color: #555;
+    tr:nth-child(even) {
+      background: #fafafa;
+    }
+    tr:hover {
+      background: #f1f7ff;
+    }
+
+    /* ======= 検索・絞り込みフォーム ======= */
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .filter-bar input[type="text"],
+    .filter-bar select {
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+      flex: 1;
+      min-width: 120px;
+    }
+    .filter-bar button {
+      padding: 6px 12px;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .filter-bar button:hover {
+      background: #0056b3;
+    }
+
+    /* ======= ボタン ======= */
+    .btn {
+      padding: 6px 12px;
+      background: #28a745;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-right: 6px;
+    }
+    .btn:hover {
+      background: #218838;
+    }
+    .btn-danger {
+      background: #dc3545;
+    }
+    .btn-danger:hover {
+      background: #c82333;
+    }
+    .btn-edit {
+      background: #ffc107;
+      color: #000;
+    }
+    .btn-edit:hover {
+      background: #e0a800;
+    }
+
+    /* ======= モーダル ======= */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal {
+      background: #fff;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 90%;
+      overflow-y: auto;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      padding: 20px;
+      position: relative;
+    }
+    .modal h2 {
+      margin-top: 0;
+      font-size: 20px;
+    }
+    .modal .close-btn {
+      position: absolute;
+      top: 10px; right: 10px;
+      background: transparent;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .modal label {
+      display: block;
+      margin: 8px 0 4px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    .modal input[type="text"],
+    .modal input[type="tel"],
+    .modal textarea,
+    .modal select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .modal textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+    .modal .modal-footer {
+      margin-top: 12px;
+      text-align: right;
+    }
+
+    /* ======= スマホ向け調整 ======= */
+    @media screen and (max-width: 600px) {
+      .filter-bar {
+        flex-direction: column;
+      }
+      .filter-bar input[type="text"],
+      .filter-bar select,
+      .filter-bar button {
+        width: 100%;
+      }
+      th, td {
+        font-size: 12px;
+        padding: 6px 8px;
+      }
+      .btn, .btn-danger, .btn-edit {
+        font-size: 12px;
+        padding: 5px 10px;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="tabs">
-    <div id="reservations-btn" class="tab-button" onclick="switchTab('reservations')">予約管理</div>
-    <div id="customers-btn" class="tab-button" onclick="switchTab('customers')">顧客リスト</div>
-  </div>
+  <div class="container">
+    <h1>Salone Ponte ダッシュボード</h1>
 
-  <!-- 予約管理コンテンツ -->
-  <div id="reservations-content" class="tab-content">
-    <h2>予約管理</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>名前</th>
-          <th>メニュー</th>
-          <th>日時</th>
-        </tr>
-      </thead>
-      <tbody id="reservations-body"></tbody>
-    </table>
-  </div>
+    <!-- ================= タブボタン ================= -->
+    <div class="tabs">
+      <div id="reservations-btn" class="tab-button" onclick="switchTab('reservations')">
+        予約管理
+      </div>
+      <div id="customers-btn" class="tab-button" onclick="switchTab('customers')">
+        顧客リスト
+      </div>
+    </div>
 
-  <!-- 顧客リストコンテンツ -->
-  <div id="customers-content" class="tab-content">
-    <h2>顧客リスト</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>名前</th>
-          <th>電話番号</th>
-          <th>最新来店日</th>
-          <th>最新メニュー</th>
-          <th>詳細</th>
-        </tr>
-      </thead>
-      <tbody id="customers-body"></tbody>
-    </table>
+    <!-- ================================== 予約管理コンテンツ ================================== -->
+    <div id="reservations-content" class="tab-content">
+      <!-- 予約フィルター・ソート -->
+      <div class="filter-bar">
+        <input type="text" id="res-search" placeholder="予約者名で検索" />
+        <select id="res-menu-filter">
+          <option value="">全メニュー</option>
+          <option value="cut">カット</option>
+          <option value="color">カラー</option>
+          <option value="perm">パーマ</option>
+        </select>
+        <select id="res-sort">
+          <option value="datetime-desc">日時順 ▼</option>
+          <option value="datetime-asc">日時順 ▲</option>
+          <option value="menu-asc">メニュー順 ▲</option>
+          <option value="menu-desc">メニュー順 ▼</option>
+        </select>
+        <button id="res-refresh" class="btn">更新</button>
+      </div>
+
+      <!-- 予約テーブル -->
+      <div class="table-wrapper">
+        <table id="reservations-table">
+          <thead>
+            <tr>
+              <th>予約ID</th>
+              <th>名前</th>
+              <th>メニュー</th>
+              <th>日時</th>
+              <th>アクション</th>
+            </tr>
+          </thead>
+          <tbody id="reservations-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ================================== 顧客リストコンテンツ ================================== -->
+    <div id="customers-content" class="tab-content">
+      <!-- 顧客フィルター・検索 -->
+      <div class="filter-bar">
+        <input type="text" id="cust-search" placeholder="顧客名で検索" />
+        <select id="cust-menu-filter">
+          <option value="">全メニュー</option>
+          <option value="cut">カット</option>
+          <option value="color">カラー</option>
+          <option value="perm">パーマ</option>
+        </select>
+        <button id="cust-refresh" class="btn">更新</button>
+      </div>
+
+      <!-- 顧客テーブル -->
+      <div class="table-wrapper">
+        <table id="customers-table">
+          <thead>
+            <tr>
+              <th>顧客ID</th>
+              <th>名前</th>
+              <th>電話番号</th>
+              <th>来店回数</th>
+              <th>最新来店日</th>
+              <th>累計金額（円）</th>
+              <th>アクション</th>
+            </tr>
+          </thead>
+          <tbody id="customers-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ================= モーダルオーバーレイ ================= -->
+    <div id="modal-overlay" class="modal-overlay">
+      <div class="modal" id="modal">
+        <button class="close-btn" id="modal-close">&times;</button>
+        <div id="modal-content">
+          <!-- モーダル内容は JavaScript で動的に差し替え -->
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
   <script>
+    // ================= Firebase 初期化 =================
     const firebaseConfig = {
       apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
       authDomain: "salone-ponte-fceca.firebaseapp.com",
@@ -104,66 +338,319 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    // ================= グローバル変数 =================
+    let reservationsData = []; // 取得した「reservations」配列を一時保持
+    let customersData    = []; // 取得した「customers」配列を一時保持
+
+    // ================= イベント登録 =================
+    window.onload = () => {
+      switchTab("reservations");
+      document.getElementById("res-refresh").onclick = fetchAndRenderReservations;
+      document.getElementById("cust-refresh").onclick = fetchAndRenderCustomers;
+      document.getElementById("res-search").oninput = filterReservations;
+      document.getElementById("res-menu-filter").onchange = filterReservations;
+      document.getElementById("res-sort").onchange = filterReservations;
+      document.getElementById("cust-search").oninput = filterCustomers;
+      document.getElementById("cust-menu-filter").onchange = filterCustomers;
+      document.getElementById("modal-close").onclick = closeModal;
+
+      // 最初にデータを取得
+      fetchAndRenderReservations();
+      fetchAndRenderCustomers();
+    };
+
+    // タブ切替
     function switchTab(tabId) {
       document.querySelectorAll(".tab-button").forEach(btn => btn.classList.remove("active"));
       document.querySelectorAll(".tab-content").forEach(div => div.classList.remove("active"));
       document.getElementById(tabId + "-btn").classList.add("active");
       document.getElementById(tabId + "-content").classList.add("active");
-      if (tabId === 'reservations') {
-        renderReservations();
-      } else if (tabId === 'customers') {
-        renderCustomers();
+
+      // データ再描画
+      if (tabId === "reservations") {
+        filterReservations();
+      } else {
+        filterCustomers();
       }
     }
 
-    async function renderReservations() {
+    // ================= 予約管理（Reservations） =================
+
+    // Firestore から全「reservations」を取得してテーブルを描画
+    async function fetchAndRenderReservations() {
+      try {
+        const snapshot = await db.collection("reservations").get();
+        reservationsData = [];
+        snapshot.forEach(doc => {
+          const d = doc.data();
+          reservationsData.push({
+            id:       doc.id,
+            name:     d.name || "",
+            menu:     d.menu || "",
+            datetime: d.datetime || "",
+            createdAt: d.createdAt || ""
+          });
+        });
+        filterReservations();
+      } catch (err) {
+        alert("予約データの取得に失敗しました: " + err.message);
+      }
+    }
+
+    // フィルター＆ソートを適用してテーブルを再描画
+    function filterReservations() {
       const tbody = document.getElementById("reservations-body");
-      tbody.innerHTML = '';
+      tbody.innerHTML = "";
+
+      // 検索キーワード
+      const keyword = document.getElementById("res-search").value.trim().toLowerCase();
+      // メニュー絞り込み
+      const menuFilter = document.getElementById("res-menu-filter").value;
+      // ソート設定
+      const sortValue = document.getElementById("res-sort").value;
+
+      let filtered = reservationsData.filter(r => {
+        if (keyword && !r.name.toLowerCase().includes(keyword)) {
+          return false;
+        }
+        if (menuFilter && r.menu !== menuFilter) {
+          return false;
+        }
+        return true;
+      });
+
+      // ソート処理
+      filtered.sort((a, b) => {
+        if (sortValue === "datetime-desc") {
+          return new Date(b.datetime) - new Date(a.datetime);
+        } else if (sortValue === "datetime-asc") {
+          return new Date(a.datetime) - new Date(b.datetime);
+        } else if (sortValue === "menu-asc") {
+          return a.menu.localeCompare(b.menu);
+        } else if (sortValue === "menu-desc") {
+          return b.menu.localeCompare(a.menu);
+        }
+        return 0;
+      });
+
+      // テーブル書き込み
+      filtered.forEach(r => {
+        const tr = document.createElement("tr");
+        const dateLabel = new Date(r.datetime).toLocaleString();
+        tr.innerHTML = `
+          <td>${r.id}</td>
+          <td>${r.name}</td>
+          <td>${r.menu}</td>
+          <td>${dateLabel}</td>
+          <td>
+            <button class="btn btn-danger" onclick="cancelReservation('${r.id}')">キャンセル</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // 予約キャンセル（ドキュメント削除）
+    async function cancelReservation(resId) {
+      if (!confirm("この予約をキャンセルしてもよろしいですか？")) return;
       try {
-        const snapshot = await db.collection("reservations").orderBy("datetime", "desc").get();
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${data.name || "-"}</td>
-            <td>${data.menu}</td>
-            <td>${new Date(data.datetime).toLocaleString()}</td>
-          `;
-          tbody.appendChild(tr);
-        });
-      } catch (e) {
-        const container = document.getElementById("reservations-content");
-        container.innerHTML += `<p style="color:red">予約の取得中にエラーが発生しました: ${e.message}</p>`;
+        await db.collection("reservations").doc(resId).delete();
+        fetchAndRenderReservations();
+        fetchAndRenderCustomers(); // キャンセルによって顧客来店履歴が変わる可能性があるため
+      } catch (err) {
+        alert("キャンセルに失敗しました: " + err.message);
       }
     }
 
-    async function renderCustomers() {
-      const tbody = document.getElementById('customers-body');
-      tbody.innerHTML = '';
+    // ================= 顧客リスト（Customers） =================
+
+    // Firestore から全「customers」を取得してテーブルを描画
+    async function fetchAndRenderCustomers() {
       try {
-        const snapshot = await db.collection('customers').orderBy('name').get();
+        const snapshot = await db.collection("customers").get();
+        customersData = [];
         snapshot.forEach(doc => {
-          const c = doc.data();
-          const last = c.reservations?.slice(-1)[0];
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${c.name}</td>
-            <td>${c.phone || '-'}</td>
-            <td>${last ? new Date(last.datetime).toLocaleDateString() : '-'}</td>
-            <td>${last ? last.menu : '-'}</td>
-            <td><button data-id="${doc.id}">詳細</button></td>
-          `;
-          tbody.appendChild(tr);
+          const d = doc.data();
+          // 来店回数・最新日・累計金額を計算（例として回数のみ）
+          const reservations = d.reservations || [];
+          const count = reservations.length;
+          const last = count > 0 ? reservations[reservations.length - 1] : null;
+          let sumPrice = 0;
+          // ※ ここでは明示的な金額フィールドがないためダミー：一律 5000 円として計算
+          reservations.forEach(r => { sumPrice += 5000; });
+
+          customersData.push({
+            id:         doc.id,
+            name:       d.name || "",
+            phone:      d.phone || "",
+            reservations,
+            visitCount: count,
+            lastVisit:  last ? last.datetime : "",
+            totalPrice: sumPrice
+          });
         });
-      } catch (e) {
-        const container = document.getElementById("customers-content");
-        container.innerHTML += `<p style="color:red">顧客リストの取得中にエラーが発生しました: ${e.message}</p>`;
+        filterCustomers();
+      } catch (err) {
+        alert("顧客データの取得に失敗しました: " + err.message);
       }
     }
 
-    window.onload = () => {
-      switchTab("reservations");
-    };
+    // フィルターを適用して顧客テーブルを再描画
+    function filterCustomers() {
+      const tbody = document.getElementById("customers-body");
+      tbody.innerHTML = "";
+
+      // 検索キーワード
+      const keyword = document.getElementById("cust-search").value.trim().toLowerCase();
+      // メニュー絞り込み（来店履歴内に「menu」が含まれるかで判定）
+      const menuFilter = document.getElementById("cust-menu-filter").value;
+
+      let filtered = customersData.filter(c => {
+        if (keyword && !c.name.toLowerCase().includes(keyword)) return false;
+        if (menuFilter) {
+          // いずれかの来店履歴に menuFilter があるか
+          const hasMenu = c.reservations.some(r => r.menu === menuFilter);
+          return hasMenu;
+        }
+        return true;
+      });
+
+      filtered.forEach(cust => {
+        const tr = document.createElement("tr");
+        const lastDateLabel = cust.lastVisit ? new Date(cust.lastVisit).toLocaleDateString() : "-";
+        tr.innerHTML = `
+          <td>${cust.id}</td>
+          <td>${cust.name}</td>
+          <td>${cust.phone}</td>
+          <td>${cust.visitCount}</td>
+          <td>${lastDateLabel}</td>
+          <td>${cust.totalPrice}</td>
+          <td>
+            <button class="btn btn-edit" onclick="openDetailModal('${cust.id}')">詳細</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ================= モーダル（顧客詳細 ⇔ 来店履歴／編集／次回予約） =================
+
+    // モーダルを開く
+    async function openDetailModal(custId) {
+      const overlay = document.getElementById("modal-overlay");
+      const content = document.getElementById("modal-content");
+      overlay.classList.add("active");
+      content.innerHTML = "<p>読み込み中...</p>";
+
+      // Firestore から顧客データを再取得して最新を反映
+      try {
+        const doc = await db.collection("customers").doc(custId).get();
+        if (!doc.exists) {
+          content.innerHTML = "<p>顧客情報が見つかりませんでした。</p>";
+          return;
+        }
+        const c = doc.data();
+        const name     = c.name || "";
+        const phone    = c.phone || "";
+        const reservations = c.reservations || [];
+
+        // モーダル内の HTML を構築
+        let html = `
+          <h2>顧客詳細</h2>
+          <label>名前：</label>
+          <input type="text" id="modal-name" value="${name}" />
+          <label>電話番号：</label>
+          <input type="tel" id="modal-phone" value="${phone}" />
+          <label>来店履歴：</label>
+          <div style="max-height:200px; overflow-y:auto; border:1px solid #ccc; padding:8px; margin-bottom:12px;">
+        `;
+        if (reservations.length === 0) {
+          html += "<p>まだ来店履歴がありません。</p>";
+        } else {
+          reservations.forEach((r, idx) => {
+            const dateStr = new Date(r.datetime).toLocaleDateString();
+            html += `<p>${idx + 1}. ${dateStr} — <span style="color:#007bff;">${r.menu}</span></p>`;
+          });
+        }
+        html += `</div>`;
+
+        // 次回予約フォーム（顧客詳細モーダル内に埋め込む）
+        html += `
+          <h3>次回予約を追加</h3>
+          <label>メニュー：</label>
+          <select id="modal-next-menu">
+            <option value="cut">カット</option>
+            <option value="color">カラー</option>
+            <option value="perm">パーマ</option>
+          </select>
+          <label>予約日時：</label>
+          <input type="datetime-local" id="modal-next-date" />
+          <div class="modal-footer">
+            <button class="btn" onclick="saveNextVisit('${custId}')">予約追加</button>
+            <button class="btn btn-danger" onclick="deleteCustomer('${custId}')">顧客削除</button>
+          </div>
+        `;
+        content.innerHTML = html;
+      } catch (err) {
+        content.innerHTML = `<p style="color:red;">読み込みエラー: ${err.message}</p>`;
+      }
+    }
+
+    // モーダルを閉じる
+    function closeModal() {
+      document.getElementById("modal-overlay").classList.remove("active");
+      document.getElementById("modal-content").innerHTML = "";
+    }
+
+    // 顧客情報を更新（名前・電話） or 来店履歴に次回予約を追加
+    async function saveNextVisit(custId) {
+      const nameVal  = document.getElementById("modal-name").value.trim();
+      const phoneVal = document.getElementById("modal-phone").value.trim();
+      const nextMenu = document.getElementById("modal-next-menu").value;
+      const nextDate = document.getElementById("modal-next-date").value;
+      if (!nextDate) {
+        alert("予約日時を選択してください");
+        return;
+      }
+      try {
+        const custRef = db.collection("customers").doc(custId);
+        const doc     = await custRef.get();
+        if (!doc.exists) {
+          alert("顧客が見つかりません。");
+          closeModal();
+          return;
+        }
+        const data = doc.data();
+        // 顧客情報を更新
+        await custRef.update({
+          name:  nameVal,
+          phone: phoneVal
+        });
+        // 次回予約を履歴に追加
+        const arr = data.reservations || [];
+        arr.push({ menu: nextMenu, datetime: new Date(nextDate).toISOString() });
+        await custRef.update({ reservations: arr });
+
+        alert("顧客情報と来店履歴を更新しました");
+        closeModal();
+        fetchAndRenderCustomers();
+      } catch (err) {
+        alert("更新エラー: " + err.message);
+      }
+    }
+
+    // 顧客を丸ごと削除（確認ダイアログ付き）
+    async function deleteCustomer(custId) {
+      if (!confirm("本当にこの顧客を削除しますか？履歴もすべて消えます")) return;
+      try {
+        await db.collection("customers").doc(custId).delete();
+        alert("顧客を削除しました");
+        closeModal();
+        fetchAndRenderCustomers();
+      } catch (err) {
+        alert("削除エラー: " + err.message);
+      }
+    }
   </script>
 </body>
 </html>
