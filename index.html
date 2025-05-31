@@ -19,6 +19,7 @@
   </style>
 </head>
 <body>
+  <!-- ■■■ ■ 名前・電話入力欄 ■■■ -->
   <label>お名前：
     <input id="userNameInput" type="text" placeholder="例）佐藤花子">
   </label><br>
@@ -27,6 +28,7 @@
   </label><br>
 
   <h2>ご予約カレンダー</h2>
+  <!-- ■■■ ■ メニュー選択 ■■■ -->
   <label>メニュー:
     <select id="menu">
       <option value="cut">カット</option>
@@ -35,84 +37,133 @@
     </select>
   </label>
 
+  <!-- ■■■ ■ 週ナビゲーション ■■■ -->
   <div class="nav">
     <button id="prevWeek">&lt; 前週</button>
     <div id="weekLabel"></div>
     <button id="nextWeek">次週 &gt;</button>
   </div>
 
+  <!-- ■■■ ■ カレンダーテーブル ■■■ -->
   <table id="calendar">
     <thead id="calendar-head"></thead>
     <tbody id="calendar-body"></tbody>
   </table>
+
+  <!-- ■■■ ■ 予約確定ボタン ■■■ -->
   <button id="reserveBtn" class="submit" style="display:none">この内容で予約する</button>
 
-  <!-- SDK -->
+  <!-- SDK 読み込み（LINE LIFF + Firebase v8） -->
   <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
   <script>
-    /* ---------- 初期設定 ---------- */
-    const firebaseConfig = { apiKey:"AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM", projectId:"salone-ponte-fceca" };
+    /* ========== ■ 初期設定 ========== */
+    const firebaseConfig = {
+      apiKey:    "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
+      projectId: "salone-ponte-fceca"
+    };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    // メニューごとの所要時間（分）
     const durations = { cut:60, color:90, perm:120 };
+
+    // 10:00〜17:30 の 30 分刻み時間帯を配列で生成
     const times = [];
-    for(let h=10; h<=17; h++){ for(let m=0; m<60; m+=30){ times.push(`${String(h).padStart(2,'0')}:${m===0?'00':'30'}`);} }
+    for(let h = 10; h <= 17; h++){
+      for(let m = 0; m < 60; m += 30){
+        times.push(`${String(h).padStart(2, '0')}:${m === 0 ? '00' : '30'}`);
+      }
+    }
 
-    let offsetWeeks = 0, selDate=null, userId="", userName="";
-    const weekLabel = document.getElementById('weekLabel');
-    const head  = document.getElementById('calendar-head');
-    const body  = document.getElementById('calendar-body');
-    const menuSel = document.getElementById('menu');
-    const btn  = document.getElementById('reserveBtn');
+    let offsetWeeks = 0;           // 表示している週のオフセット（0＝今週、-1＝先週、+1＝来週）
+    let selDate     = null;        // ユーザーが選んだ日付
+    let userId      = "";          // LIFF 経由で取得する LINE の userId
+    let userName    = "";          // LIFF 経由で取得する LINE の表示名
 
-    /* ---------- ① カレンダー描画関数 ---------- */
-    async function renderCalendar(){
-      body.innerHTML = ''; head.innerHTML = ''; btn.style.display='none'; selDate=null;
+    const weekLabel = document.getElementById('weekLabel');      // 週の範囲を表示
+    const head      = document.getElementById('calendar-head');  // カレンダーヘッダー
+    const body      = document.getElementById('calendar-body');  // カレンダーボディ
+    const menuSel   = document.getElementById('menu');          // メニュー選択
+    const btn       = document.getElementById('reserveBtn');     // 予約確定ボタン
 
-      const startWeek = new Date(); startWeek.setDate(startWeek.getDate()+offsetWeeks*7);
-      const endWeek   = new Date(startWeek); endWeek.setDate(endWeek.getDate()+6);
+    /* ========== ■ カレンダー描画関数（宣言） ========== */
+    async function renderCalendar() {
+      // 画面リセット
+      body.innerHTML = "";
+      head.innerHTML = "";
+      btn.style.display = 'none';
+      selDate = null;
+
+      // 今週の開始日 (offsetWeeks で +/- 週を移動)
+      const today     = new Date();
+      const startWeek = new Date(today);
+      startWeek.setDate(today.getDate() + offsetWeeks * 7);
+
+      // 開始日の「月/日(曜)」を計算し、最終日の翌週6日後まで
+      const endWeek = new Date(startWeek);
+      endWeek.setDate(startWeek.getDate() + 6);
       weekLabel.textContent = `${formatDate(startWeek)} - ${formatDate(endWeek)}`;
 
-      // ヘッダー（日付＋曜日）
-      const hr = document.createElement('tr'); hr.innerHTML = '<th>時間</th>';
-      for(let i=0;i<7;i++){ const d=new Date(startWeek); d.setDate(startWeek.getDate()+i); hr.innerHTML+=`<th>${formatDate(d)}</th>`;}
+      // ヘッダー行（時間 + 7日分の日付表示）
+      const hr = document.createElement('tr');
+      hr.innerHTML = '<th>時間</th>';
+      for(let i = 0; i < 7; i++){
+        const d = new Date(startWeek);
+        d.setDate(startWeek.getDate() + i);
+        hr.innerHTML += `<th>${formatDate(d)}</th>`;
+      }
       head.appendChild(hr);
 
-      // 1週間分の既存予約を取得
+      // Firestore から「その週の予約データ」を取得
       const weekStartISO = startWeek.toISOString();
-      const weekEndISO   = new Date(endWeek.getFullYear(), endWeek.getMonth(), endWeek.getDate(), 23,59,59).toISOString();
+      const weekEndISO   = new Date(endWeek.getFullYear(), endWeek.getMonth(), endWeek.getDate(), 23, 59, 59).toISOString();
+      // ※ datetime フィールドを ISO 文字列でクエリ
       const snap = await db.collection('reservations')
-                           .where('datetime','>=',weekStartISO)
-                           .where('datetime','<=',weekEndISO).get();
+        .where('datetime', '>=', weekStartISO)
+        .where('datetime', '<=', weekEndISO)
+        .get();
 
+      // 取得した予約を「開始日時 st, 終了日時 en」の配列に整形
       const reserved = [];
-      snap.forEach(doc=>{
+      snap.forEach(doc => {
         const d = doc.data();
-        const st=new Date(d.datetime);
-        const en=new Date(st.getTime()+(durations[d.menu]||60)*60000);
-        reserved.push({st,en});
+        const st = new Date(d.datetime);
+        const en = new Date(st.getTime() + (durations[d.menu] || 60) * 60000);
+        reserved.push({ st, en });
       });
 
+      // カレンダー本体：times（10:00, 10:30, ... 17:30）ごとに行を生成
       const dur = durations[menuSel.value];
-      times.forEach(t=>{
-        const tr=document.createElement('tr'); tr.innerHTML=`<td>${t}</td>`;
-        for(let i=0;i<7;i++){
-          const cell=document.createElement('td');
-          const d = new Date(startWeek); d.setDate(startWeek.getDate()+i);
-          const [hh,mm] = t.split(':'); d.setHours(+hh,+mm,0,0);
-          const end = new Date(d.getTime()+dur*60000);
-          const overlap = reserved.some(r=> d<r.en && end>r.st);
+      times.forEach(t => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${t}</td>`;
+        for(let i = 0; i < 7; i++){
+          const cell = document.createElement('td');
+          // 各列の日付を算出して「開始時刻」d にセット
+          const d = new Date(startWeek);
+          d.setDate(startWeek.getDate() + i);
+          const [hh, mm] = t.split(':');
+          d.setHours(+hh, +mm, 0, 0);
+          const end = new Date(d.getTime() + dur * 60000);
 
+          // 既存予約配列と重複判定
+          const overlap = reserved.some(r => (d < r.en && end > r.st));
           if(overlap){
-            cell.textContent='×'; cell.className='unavailable';
-          }else{
-            cell.textContent='◯'; cell.className='available';
-            cell.onclick=()=>{ document.querySelectorAll('.selected').forEach(c=>c.classList.remove('selected'));
-              cell.classList.add('selected'); selDate=new Date(d); btn.style.display='block'; };
+            cell.textContent = '×';
+            cell.className   = 'unavailable';
+          } else {
+            cell.textContent = '◯';
+            cell.className   = 'available';
+            cell.onclick     = () => {
+              // 既存の選択解除 → 今回選択セルを selected に
+              document.querySelectorAll('.selected').forEach(c => c.classList.remove('selected'));
+              cell.classList.add('selected');
+              selDate = new Date(d);     // 選択した日時を保持
+              btn.style.display = 'block';
+            };
           }
           tr.appendChild(cell);
         }
@@ -120,52 +171,86 @@
       });
     }
 
-    function formatDate(d){ return `${d.getMonth()+1}/${d.getDate()}(${"日月火水木金土"[d.getDay()]})`; }
+    // 日付を「月/日(曜日)」形式で返す補助関数
+    function formatDate(d) {
+      const weekdays = "日月火水木金土";
+      return `${d.getMonth() + 1}/${d.getDate()}(${weekdays[d.getDay()]})`;
+    }
 
-    /* ---------- ② イベント登録 ---------- */
-    document.getElementById('prevWeek').onclick = ()=>{ offsetWeeks--; renderCalendar(); };
-    document.getElementById('nextWeek').onclick = ()=>{ offsetWeeks++; renderCalendar(); };
+    /* ========== ■ イベント登録（renderCalendar 呼び出し等） ========== */
+    document.getElementById('prevWeek').onclick = () => {
+      offsetWeeks--;
+      renderCalendar();
+    };
+    document.getElementById('nextWeek').onclick = () => {
+      offsetWeeks++;
+      renderCalendar();
+    };
     menuSel.onchange = renderCalendar;
 
-    /* ---------- ③ 予約ボタンクリック ---------- */
+    /* ========== ■ 予約確定ボタンクリック（Firestore への書き込み） ========== */
     btn.onclick = async () => {
-      if(!selDate) return;
+      if (!selDate) return;  // 日付が選ばれていなければ何もしない
+
+      // ◇ 名前・電話の入力欄から値を取得
       const nameInput  = document.getElementById('userNameInput').value.trim() || userName;
       const phoneInput = document.getElementById('userPhoneInput').value.trim() || "";
 
+      // ◇ Firestore に保存するデータ構造
       const data = {
-        userId, name:nameInput, phone:phoneInput,
-        menu:menuSel.value,
+        userId,
+        name:     nameInput,
+        phone:    phoneInput,
+        menu:     menuSel.value,
         datetime: selDate.toISOString(),
         createdAt: new Date().toISOString()
       };
 
-      try{
+      try {
+        // ① reservations コレクションに追加
         await db.collection('reservations').add(data);
 
+        // ② customers コレクションへ作成／更新
         const custRef = db.collection('customers').doc(userId);
         const snap    = await custRef.get();
-        if(snap.exists){
+
+        if (snap.exists) {
+          // 既存ユーザー：予約配列に追記
           const arr = snap.data().reservations || [];
-          arr.push({ menu:data.menu, datetime:data.datetime });
-          await custRef.update({ name:nameInput, phone:phoneInput, reservations:arr });
-        }else{
-          await custRef.set({ userId, name:nameInput, phone:phoneInput,
-                              reservations:[{ menu:data.menu, datetime:data.datetime }] });
+          arr.push({ menu: data.menu, datetime: data.datetime });
+          await custRef.update({
+            name:         nameInput,
+            phone:        phoneInput,
+            reservations: arr
+          });
+        } else {
+          // 新規ユーザー：ドキュメント作成
+          await custRef.set({
+            userId,
+            name:  nameInput,
+            phone: phoneInput,
+            reservations: [
+              { menu: data.menu, datetime: data.datetime }
+            ]
+          });
         }
+
         alert('予約を受け付けました');
-        renderCalendar();
-      }catch(e){
-        alert('予約保存に失敗しました：'+e.message);
+        renderCalendar();  // カレンダーを再描画（今回選んだセルを × に）
+      } catch (e) {
+        alert('予約保存に失敗しました：' + e.message);
       }
     };
 
-    /* ---------- ④ LIFF 初期化後にカレンダー描画 ---------- */
+    /* ========== ■ LIFF 初期化後にカレンダーを一度描画 ========== */
     window.onload = async () => {
-      await liff.init({ liffId:'2007345180-oVA2L6dw' });
-      if(!liff.isLoggedIn()) return liff.login();
-      const p = await liff.getProfile();
-      userId = p.userId; userName = p.displayName;
+      await liff.init({ liffId: '2007345180-oVA2L6dw' });
+      if (!liff.isLoggedIn()) return liff.login();
+
+      const profile = await liff.getProfile();
+      userId   = profile.userId;
+      userName = profile.displayName;
+
       renderCalendar();
     };
   </script>
