@@ -1,257 +1,686 @@
-<!-- index.html – 週ナビゲーション付きカレンダー（修正版） -->
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>Salone Ponte 予約フォーム</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <title>Salone Ponte 予約フロー</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body{font-family:sans-serif;padding:10px}
-    .nav{display:flex;justify-content:space-between;margin:10px 0}
-    .nav button{padding:4px 10px;border:1px solid #ccc;background:#f0f0f0;cursor:pointer;border-radius:4px}
-    table{border-collapse:collapse;width:100%}
-    th,td{border:1px solid #ccc;padding:6px;text-align:center}
-    th{background:#f0f0f0;font-size:12px}
-    .available{background:#cce5ff;cursor:pointer}.available:hover{background:#99ccff}
-    .unavailable{background:#f8d7da;color:#721c24}
-    .selected{background:#007bff;color:#fff}
-    .submit{width:100%;padding:10px;background:#28a745;color:#fff;border:none;border-radius:4px;margin-top:15px;font-size:16px}
+    /* ======= 全体スタイル ======= */
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      background: #f9f9f9;
+      color: #333;
+    }
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 10px;
+    }
+    h2 {
+      margin-top: 20px;
+      margin-bottom: 10px;
+      font-size: 20px;
+      text-align: center;
+    }
+    button {
+      cursor: pointer;
+    }
+
+    /* ======= 画面セクション ======= */
+    .view {
+      display: none;
+    }
+    .view.active {
+      display: block;
+    }
+
+    /* ======= メニューカード ======= */
+    .menus-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .menu-card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+      text-align: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      transition: box-shadow 0.2s;
+    }
+    .menu-card:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .menu-card img {
+      width: 100%;
+      height: 100px;
+      object-fit: cover;
+    }
+    .menu-info {
+      padding: 8px;
+    }
+    .menu-info h3 {
+      margin: 6px 0 4px;
+      font-size: 16px;
+    }
+    .menu-info p {
+      margin: 2px 0;
+      font-size: 14px;
+    }
+    .menu-select-btn {
+      margin-top: 6px;
+      padding: 6px 12px;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .menu-select-btn:hover {
+      background: #0056b3;
+    }
+
+    /* ======= カレンダー ======= */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      margin: 10px 0;
+    }
+    .nav button {
+      padding: 4px 8px;
+      border: 1px solid #ccc;
+      background: #f0f0f0;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .nav button:hover {
+      background: #ddd;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px;
+      text-align: center;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    th {
+      background: #f0f0f0;
+    }
+    .available {
+      background: #cce5ff;
+      cursor: pointer;
+    }
+    .available:hover {
+      background: #99ccff;
+    }
+    .unavailable {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    .selected {
+      background: #007bff;
+      color: #fff;
+    }
+    /* 横スクロール対応 */
+    .calendar-wrapper {
+      overflow-x: auto;
+    }
+
+    /* ======= フォーム入力 ======= */
+    .form-group {
+      margin-bottom: 12px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 4px;
+      font-weight: bold;
+    }
+    .form-group input[type="text"],
+    .form-group input[type="tel"],
+    .form-group textarea,
+    .form-group select,
+    .form-group input[type="datetime-local"] {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .form-group textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+    .btn-submit {
+      width: 100%;
+      background: #28a745;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 10px 0;
+      font-size: 16px;
+      margin-top: 10px;
+    }
+    .btn-submit:hover {
+      background: #218838;
+    }
+
+    /* ======= スタッフ選択 ======= */
+    .staff-select {
+      margin: 10px 0;
+    }
+    .staff-select select {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    /* ======= モバイル調整 ======= */
+    @media screen and (max-width: 480px) {
+      .menu-info h3 {
+        font-size: 14px;
+      }
+      .menu-info p {
+        font-size: 12px;
+      }
+      .nav button {
+        font-size: 12px;
+        padding: 4px 6px;
+      }
+      th, td {
+        font-size: 10px;
+        padding: 4px;
+      }
+      .btn-submit {
+        font-size: 14px;
+        padding: 8px 0;
+      }
+    }
   </style>
 </head>
 <body>
-  <!-- ■■■ ■ 名前・電話入力欄 ■■■ -->
-  <label>お名前：
-    <input id="userNameInput" type="text" placeholder="例）佐藤花子">
-  </label><br>
-  <label>電話番号：
-    <input id="userPhoneInput" type="tel" placeholder="例）09012345678">
-  </label><br>
+  <div class="container">
+    <h2>Salone Ponte 予約</h2>
 
-  <h2>ご予約カレンダー</h2>
-  <!-- ■■■ ■ メニュー選択 ■■■ -->
-  <label>メニュー:
-    <select id="menu">
-      <option value="cut">カット</option>
-      <option value="color">カラー</option>
-      <option value="perm">パーマ</option>
-    </select>
-  </label>
+    <!-- ========== 1. メニュー選択画面 ========== -->
+    <div id="menuView" class="view active">
+      <h2>メニューを選択</h2>
+      <div id="menusContainer" class="menus-grid">
+        <!-- Firestore の menus コレクションから取得してカードを生成 -->
+      </div>
+    </div>
 
-  <!-- ■■■ ■ 週ナビゲーション ■■■ -->
-  <div class="nav">
-    <button id="prevWeek">&lt; 前週</button>
-    <div id="weekLabel"></div>
-    <button id="nextWeek">次週 &gt;</button>
+    <!-- ========== 2. 担当者＋カレンダー選択画面 ========== -->
+    <div id="calendarView" class="view">
+      <h2>担当者と日時を選択</h2>
+
+      <!-- 選択中メニュー情報表示 -->
+      <div id="selectedMenuInfo" style="text-align:center; margin-bottom:10px;">
+        <!-- 例：<strong>カット</strong> - ¥4,000 (所要60分) -->
+      </div>
+
+      <!-- スタッフ選択 -->
+      <div class="staff-select">
+        <label for="staffSelect">担当者:</label>
+        <select id="staffSelect"></select>
+      </div>
+
+      <!-- 週ナビゲーション付きカレンダー -->
+      <div class="nav">
+        <button id="prevWeekBtn">&lt; 前週</button>
+        <div id="weekLabel"></div>
+        <button id="nextWeekBtn">次週 &gt;</button>
+      </div>
+      <div class="calendar-wrapper">
+        <table>
+          <thead id="calendarHead"></thead>
+          <tbody id="calendarBody"></tbody>
+        </table>
+      </div>
+
+      <button id="toDetailBtn" class="btn-submit" style="display:none; margin-top:10px;">
+        次へ
+      </button>
+      <button id="backToMenuBtn" class="btn-submit" style="background:#6c757d; margin-top:6px;">
+        戻る
+      </button>
+    </div>
+
+    <!-- ========== 3. 詳細入力画面 ========== -->
+    <div id="detailView" class="view">
+      <h2>予約情報を入力</h2>
+
+      <!-- 既存顧客かどうか判定中メッセージ -->
+      <div id="detailLoading" style="text-align:center; margin-bottom:10px;">
+        読み込み中...
+      </div>
+
+      <form id="detailForm" style="display:none;">
+        <!-- 初回予約：名前・電話・気になる点入力 -->
+        <div id="firstTimeFields">
+          <div class="form-group">
+            <label for="custNameInput">お名前</label>
+            <input type="text" id="custNameInput" required />
+          </div>
+          <div class="form-group">
+            <label for="custPhoneInput">電話番号</label>
+            <input type="tel" id="custPhoneInput" required />
+          </div>
+        </div>
+
+        <!-- 常連さんには表示しないが、どちらでもノートは表示 -->
+        <div class="form-group">
+          <label for="custNoteInput">気になる点・メモ（任意）</label>
+          <textarea id="custNoteInput" placeholder="アレルギー等あればご記入ください"></textarea>
+        </div>
+
+        <button type="submit" class="btn-submit">予約を確定</button>
+        <button type="button" id="backToCalendarBtn" class="btn-submit" style="background:#6c757d; margin-top:6px;">
+          戻る
+        </button>
+      </form>
+    </div>
   </div>
 
-  <!-- ■■■ ■ カレンダーテーブル ■■■ -->
-  <table id="calendar">
-    <thead id="calendar-head"></thead>
-    <tbody id="calendar-body"></tbody>
-  </table>
-
-  <!-- ■■■ ■ 予約確定ボタン ■■■ -->
-  <button id="reserveBtn" class="submit" style="display:none">この内容で予約する</button>
-
-  <!-- SDK 読み込み（LINE LIFF + Firebase v8） -->
-  <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
+  <!-- Firestore & LIFF SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
 
   <script>
-    /* ========== ■ 初期設定 ========== */
+    // ================= Firebase 初期化 =================
     const firebaseConfig = {
       apiKey:    "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
-      projectId: "salone-ponte-fceca"
+      authDomain: "salone-ponte-fceca.firebaseapp.com",
+      projectId: "salone-ponte-fceca",
+      storageBucket: "salone-ponte-fceca.appspot.com",
+      messagingSenderId: "463711728652",
+      appId:     "1:463711728652:web:59c749e11d201b26b86a29",
+      measurementId: "G-MPWGTB6R7C"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // メニューごとの所要時間（分）
-    const durations = { cut:60, color:90, perm:120 };
+    // ================= グローバル変数 =================
+    let userId = "", userName = "";             // LIFFログインで取得
+    let menusData = [];                         // Firestore ― menus コレクション
+    let staffsData = [];                        // Firestore ― staffs コレクション
 
-    // 10:00〜17:30 の 30 分刻み時間帯を配列で生成
-    const times = [];
-    for(let h = 10; h <= 17; h++){
-      for(let m = 0; m < 60; m += 30){
-        times.push(`${String(h).padStart(2, '0')}:${m === 0 ? '00' : '30'}`);
+    let selectedMenu = null;                    // { id, name, photoURL, price, duration }
+    let selectedStaff = null;                   // { id, name }
+    let selDateObj = null;                      // Date 型の予約日時
+
+    let offsetWeeks = 0;                        // カレンダーの週オフセット
+
+    // ================= ビュー切り替えヘルパー =================
+    function showView(viewId) {
+      document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+      document.getElementById(viewId).classList.add("active");
+    }
+
+    // ================= 1. メニュー選択画面 =================
+    async function loadMenus() {
+      const container = document.getElementById("menusContainer");
+      container.innerHTML = "";
+      try {
+        // Firestore の menus コレクションを取得
+        const snap = await db.collection("menus").get();
+        menusData = []; // 一旦クリア
+        snap.forEach(doc => {
+          const d = doc.data();
+          menusData.push({
+            id:       doc.id,
+            name:     d.name || "無名メニュー",
+            photoURL: d.photoURL || "",
+            price:    d.price || 0,
+            duration: d.duration || 60
+          });
+        });
+
+        if (menusData.length === 0) {
+          container.innerHTML = "<p>まだメニューが登録されていません。</p>";
+          return;
+        }
+        // カードを生成
+        menusData.forEach(menu => {
+          const card = document.createElement("div");
+          card.className = "menu-card";
+          card.innerHTML = `
+            <img src="${menu.photoURL}" alt="${menu.name}" onerror="this.src='https://via.placeholder.com/150';" />
+            <div class="menu-info">
+              <h3>${menu.name}</h3>
+              <p>¥${menu.price.toLocaleString()}</p>
+              <p>所要 ${menu.duration} 分</p>
+              <button class="menu-select-btn" data-id="${menu.id}">選択する</button>
+            </div>
+          `;
+          container.appendChild(card);
+
+          // 選択ボタンにイベント
+          card.querySelector(".menu-select-btn").onclick = () => {
+            const m = menusData.find(x => x.id === menu.id);
+            if (m) selectMenu(m);
+          };
+        });
+      } catch (err) {
+        container.innerHTML = `<p style="color:red;">メニュー読み込みに失敗しました: ${err.message}</p>`;
       }
     }
 
-    let offsetWeeks = 0;           // 表示している週のオフセット（0＝今週、-1＝先週、+1＝来週）
-    let selDate     = null;        // ユーザーが選んだ日付
-    let userId      = "";          // LIFF 経由で取得する LINE の userId
-    let userName    = "";          // LIFF 経由で取得する LINE の表示名
+    function selectMenu(menu) {
+      selectedMenu = menu;
+      // 選択メニュー情報を表示
+      const infoDiv = document.getElementById("selectedMenuInfo");
+      infoDiv.innerHTML = `
+        <strong>${menu.name}</strong><br>
+        ¥${menu.price.toLocaleString()}（所要 ${menu.duration} 分）
+      `;
+      // 次の画面へ
+      loadStaffsAndShowCalendar();
+    }
 
-    const weekLabel = document.getElementById('weekLabel');      // 週の範囲を表示
-    const head      = document.getElementById('calendar-head');  // カレンダーヘッダー
-    const body      = document.getElementById('calendar-body');  // カレンダーボディ
-    const menuSel   = document.getElementById('menu');          // メニュー選択
-    const btn       = document.getElementById('reserveBtn');     // 予約確定ボタン
+    // ================= 2. スタッフ＋カレンダー画面 =================
+    async function loadStaffsAndShowCalendar() {
+      showView("calendarView");
 
-    /* ========== ■ カレンダー描画関数（宣言） ========== */
+      // Firestore の staffs コレクションを取得
+      try {
+        const snap = await db.collection("staffs").get();
+        staffsData = [];
+        snap.forEach(doc => {
+          const d = doc.data();
+          staffsData.push({
+            id:   doc.id,
+            name: d.name || "スタッフ"
+          });
+        });
+      } catch (err) {
+        alert("スタッフ読み込みに失敗しました: " + err.message);
+      }
+
+      // スタッフプルダウンを生成
+      const sel = document.getElementById("staffSelect");
+      sel.innerHTML = "";
+      staffsData.forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s.id;
+        opt.textContent = s.name;
+        sel.appendChild(opt);
+      });
+      // 初期選択とイベント
+      if (staffsData.length > 0) {
+        selectedStaff = staffsData[0];
+        sel.value = selectedStaff.id;
+      }
+      sel.onchange = () => {
+        const sid = sel.value;
+        selectedStaff = staffsData.find(x => x.id === sid);
+        offsetWeeks = 0;
+        renderCalendar();
+      };
+
+      // 週ナビボタン
+      document.getElementById("prevWeekBtn").onclick = () => {
+        offsetWeeks--;
+        renderCalendar();
+      };
+      document.getElementById("nextWeekBtn").onclick = () => {
+        offsetWeeks++;
+        renderCalendar();
+      };
+
+      // 「戻る」ボタン
+      document.getElementById("backToMenuBtn").onclick = () => {
+        showView("menuView");
+      };
+
+      // 「次へ」ボタン（日時選択後に表示）
+      document.getElementById("toDetailBtn").onclick = () => {
+        if (!selDateObj) {
+          alert("日時を選択してください");
+          return;
+        }
+        loadDetailView();
+      };
+
+      // 初回カレンダー描画
+      renderCalendar();
+    }
+
     async function renderCalendar() {
-      // 画面リセット
-      body.innerHTML = "";
+      const head = document.getElementById("calendarHead");
+      const body = document.getElementById("calendarBody");
       head.innerHTML = "";
-      btn.style.display = 'none';
-      selDate = null;
+      body.innerHTML = "";
+      document.getElementById("toDetailBtn").style.display = "none";
+      selDateObj = null;
 
-      // 今週の開始日 (offsetWeeks で +/- 週を移動)
-      const today     = new Date();
+      // カレンダー範囲（週頭～週末）
+      const today = new Date();
       const startWeek = new Date(today);
       startWeek.setDate(today.getDate() + offsetWeeks * 7);
-
-      // 開始日の「月/日(曜)」を計算し、最終日の翌週6日後まで
       const endWeek = new Date(startWeek);
       endWeek.setDate(startWeek.getDate() + 6);
-      weekLabel.textContent = `${formatDate(startWeek)} - ${formatDate(endWeek)}`;
 
-      // ヘッダー行（時間 + 7日分の日付表示）
-      const hr = document.createElement('tr');
-      hr.innerHTML = '<th>時間</th>';
-      for(let i = 0; i < 7; i++){
+      // ヘッダー（日付＋曜日）
+      const hr = document.createElement("tr");
+      hr.innerHTML = "<th>時間</th>";
+      for (let i = 0; i < 7; i++) {
         const d = new Date(startWeek);
         d.setDate(startWeek.getDate() + i);
         hr.innerHTML += `<th>${formatDate(d)}</th>`;
       }
       head.appendChild(hr);
 
-      // Firestore から「その週の予約データ」を取得
+      // その週の予約を Firestore から取得（指定スタッフ＋メニュー）
       const weekStartISO = startWeek.toISOString();
-      const weekEndISO   = new Date(endWeek.getFullYear(), endWeek.getMonth(), endWeek.getDate(), 23, 59, 59).toISOString();
-      // ※ datetime フィールドを ISO 文字列でクエリ
-      const snap = await db.collection('reservations')
-        .where('datetime', '>=', weekStartISO)
-        .where('datetime', '<=', weekEndISO)
-        .get();
+      const weekEndISO = new Date(endWeek.getFullYear(), endWeek.getMonth(), endWeek.getDate(), 23,59,59).toISOString();
+      let reserved = [];
+      try {
+        const snap = await db.collection("reservations")
+          .where("datetime", ">=", weekStartISO)
+          .where("datetime", "<=", weekEndISO)
+          .where("staffId", "==", selectedStaff.id)
+          .get();
+        reserved = [];
+        snap.forEach(doc => {
+          const d = doc.data();
+          // menuId などでフィルタする場合もあるが、ここではスタッフだけ
+          const st = new Date(d.datetime);
+          const en = new Date(st.getTime() + (selectedMenu.duration || 60) * 60000);
+          reserved.push({ st, en });
+        });
+      } catch (err) {
+        alert("予約取得エラー: " + err.message);
+      }
 
-      // 取得した予約を「開始日時 st, 終了日時 en」の配列に整形
-      const reserved = [];
-      snap.forEach(doc => {
-        const d = doc.data();
-        const st = new Date(d.datetime);
-        const en = new Date(st.getTime() + (durations[d.menu] || 60) * 60000);
-        reserved.push({ st, en });
-      });
+      // 時間帯リスト（10:00～17:30 30分刻み）
+      const times = [];
+      for (let h = 10; h <= 17; h++) {
+        for (let m = 0; m < 60; m += 30) {
+          times.push(`${String(h).padStart(2,"0")}:${m===0?"00":"30"}`);
+        }
+      }
 
-      // カレンダー本体：times（10:00, 10:30, ... 17:30）ごとに行を生成
-      const dur = durations[menuSel.value];
+      // 各行（時間）ごとにループ
       times.forEach(t => {
-        const tr = document.createElement('tr');
+        const tr = document.createElement("tr");
         tr.innerHTML = `<td>${t}</td>`;
-        for(let i = 0; i < 7; i++){
-          const cell = document.createElement('td');
-          // 各列の日付を算出して「開始時刻」d にセット
+        for (let i = 0; i < 7; i++) {
+          const cell = document.createElement("td");
           const d = new Date(startWeek);
           d.setDate(startWeek.getDate() + i);
-          const [hh, mm] = t.split(':');
+          const [hh, mm] = t.split(":");
           d.setHours(+hh, +mm, 0, 0);
-          const end = new Date(d.getTime() + dur * 60000);
+          const end = new Date(d.getTime() + (selectedMenu.duration || 60) * 60000);
 
-          // 既存予約配列と重複判定
-          const overlap = reserved.some(r => (d < r.en && end > r.st));
-          if(overlap){
-            cell.textContent = '×';
-            cell.className   = 'unavailable';
+          // 予約済みか判定
+          const overlap = reserved.some(r => d < r.en && end > r.st);
+          if (overlap) {
+            cell.textContent = "×";
+            cell.className = "unavailable";
           } else {
-            cell.textContent = '◯';
-            cell.className   = 'available';
-            cell.onclick     = () => {
-              // 既存の選択解除 → 今回選択セルを selected に
-              document.querySelectorAll('.selected').forEach(c => c.classList.remove('selected'));
-              cell.classList.add('selected');
-              selDate = new Date(d);     // 選択した日時を保持
-              btn.style.display = 'block';
+            cell.textContent = "◯";
+            cell.className = "available";
+            cell.onclick = () => {
+              // 既存選択解除 → 今回セルに "selected" を付与
+              document.querySelectorAll(".selected").forEach(c => c.classList.remove("selected"));
+              cell.classList.add("selected");
+              selDateObj = new Date(d);
+              document.getElementById("toDetailBtn").style.display = "block";
             };
           }
           tr.appendChild(cell);
         }
         body.appendChild(tr);
       });
+
+      // 週ラベルを更新
+      document.getElementById("weekLabel").textContent =
+        `${formatDate(startWeek)} - ${formatDate(endWeek)}`;
     }
 
-    // 日付を「月/日(曜日)」形式で返す補助関数
     function formatDate(d) {
-      const weekdays = "日月火水木金土";
-      return `${d.getMonth() + 1}/${d.getDate()}(${weekdays[d.getDay()]})`;
+      const w = ["日","月","火","水","木","金","土"][d.getDay()];
+      return `${d.getMonth()+1}/${d.getDate()}(${w})`;
     }
 
-    /* ========== ■ イベント登録（renderCalendar 呼び出し等） ========== */
-    document.getElementById('prevWeek').onclick = () => {
-      offsetWeeks--;
-      renderCalendar();
+    // ================= 3. 詳細入力画面 =================
+    async function loadDetailView() {
+      showView("detailView");
+      document.getElementById("detailLoading").style.display = "block";
+      document.getElementById("detailForm").style.display = "none";
+
+      // LIFF 初期化済みならスキップ。そうでなければ初期化＋ログイン
+      try {
+        await liff.init({ liffId: "2007345180-oVA2L6dw" });
+        if (!liff.isLoggedIn()) {
+          await liff.login();
+          return;
+        }
+        const profile = await liff.getProfile();
+        userId = profile.userId;
+        userName = profile.displayName;
+      } catch (err) {
+        alert("LINEログインエラー: " + err.message);
+        return;
+      }
+
+      // Firestore の customers/{userId} 存在チェック
+      let exists = false;
+      try {
+        const doc = await db.collection("customers").doc(userId).get();
+        if (doc.exists) exists = true;
+      } catch (err) {
+        alert("顧客チェック失敗: " + err.message);
+      }
+
+      // 既存顧客の場合は名前・電話欄を隠して表示しない
+      const firstFields = document.getElementById("firstTimeFields");
+      if (exists) {
+        firstFields.style.display = "none";
+      } else {
+        firstFields.style.display = "block";
+      }
+
+      // フォームを表示
+      document.getElementById("detailLoading").style.display = "none";
+      document.getElementById("detailForm").style.display = "block";
+    }
+
+    // 「戻る」ボタン
+    document.getElementById("backToCalendarBtn").onclick = () => {
+      showView("calendarView");
     };
-    document.getElementById('nextWeek').onclick = () => {
-      offsetWeeks++;
-      renderCalendar();
-    };
-    menuSel.onchange = renderCalendar;
 
-    /* ========== ■ 予約確定ボタンクリック（Firestore への書き込み） ========== */
-    btn.onclick = async () => {
-      if (!selDate) return;  // 日付が選ばれていなければ何もしない
+    // フォーム送信時
+    document.getElementById("detailForm").onsubmit = async (e) => {
+      e.preventDefault();
+      // 初回 or 常連問わず、ノートは取得
+      const note = document.getElementById("custNoteInput").value.trim();
 
-      // ◇ 名前・電話の入力欄から値を取得
-      const nameInput  = document.getElementById('userNameInput').value.trim() || userName;
-      const phoneInput = document.getElementById('userPhoneInput').value.trim() || "";
+      // 初回予約の場合、名前・電話を取得
+      let nameVal = userName, phoneVal = "";
+      if (document.getElementById("firstTimeFields").style.display !== "none") {
+        nameVal = document.getElementById("custNameInput").value.trim();
+        phoneVal = document.getElementById("custPhoneInput").value.trim();
+        if (!nameVal || !phoneVal) {
+          alert("お名前と電話番号を入力してください");
+          return;
+        }
+      }
 
-      // ◇ Firestore に保存するデータ構造
+      // 予約データを Firestore に保存
       const data = {
         userId,
-        name:     nameInput,
-        phone:    phoneInput,
-        menu:     menuSel.value,
-        datetime: selDate.toISOString(),
-        createdAt: new Date().toISOString()
+        name: nameVal,
+        phone: phoneVal,
+        menuId:     selectedMenu.id,
+        menuName:   selectedMenu.name,
+        price:      selectedMenu.price,
+        duration:   selectedMenu.duration,
+        staffId:    selectedStaff.id,
+        staffName:  selectedStaff.name,
+        datetime:   selDateObj.toISOString(),
+        note:       note,
+        createdAt:  new Date().toISOString()
       };
 
       try {
-        // ① reservations コレクションに追加
-        await db.collection('reservations').add(data);
+        // ① reservations に追加
+        await db.collection("reservations").add(data);
 
-        // ② customers コレクションへ作成／更新
-        const custRef = db.collection('customers').doc(userId);
+        // ② customers を作成/更新
+        const custRef = db.collection("customers").doc(userId);
         const snap    = await custRef.get();
-
         if (snap.exists) {
-          // 既存ユーザー：予約配列に追記
           const arr = snap.data().reservations || [];
-          arr.push({ menu: data.menu, datetime: data.datetime });
+          arr.push({
+            menu:     selectedMenu.name,
+            datetime: selDateObj.toISOString(),
+            staff:    selectedStaff.name,
+            price:    selectedMenu.price
+          });
           await custRef.update({
-            name:         nameInput,
-            phone:        phoneInput,
             reservations: arr
           });
         } else {
-          // 新規ユーザー：ドキュメント作成
           await custRef.set({
             userId,
-            name:  nameInput,
-            phone: phoneInput,
+            name: nameVal,
+            phone: phoneVal,
             reservations: [
-              { menu: data.menu, datetime: data.datetime }
+              {
+                menu:     selectedMenu.name,
+                datetime: selDateObj.toISOString(),
+                staff:    selectedStaff.name,
+                price:    selectedMenu.price
+              }
             ]
           });
         }
 
-        alert('予約を受け付けました');
-        renderCalendar();  // カレンダーを再描画（今回選んだセルを × に）
-      } catch (e) {
-        alert('予約保存に失敗しました：' + e.message);
+        alert("予約が確定しました！");
+        // 最初に戻す
+        window.location.reload();
+      } catch (err) {
+        alert("予約登録に失敗しました: " + err.message);
       }
     };
 
-    /* ========== ■ LIFF 初期化後にカレンダーを一度描画 ========== */
-    window.onload = async () => {
-      await liff.init({ liffId: '2007345180-oVA2L6dw' });
-      if (!liff.isLoggedIn()) return liff.login();
-
-      const profile = await liff.getProfile();
-      userId   = profile.userId;
-      userName = profile.displayName;
-
-      renderCalendar();
+    // ================= 初回ロード =================
+    window.onload = () => {
+      showView("menuView");
+      loadMenus();
     };
   </script>
 </body>
