@@ -183,6 +183,34 @@
       border: 1px solid #ccc;
       border-radius: 4px;
     }
+    .staff-profile {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      margin-bottom: 10px;
+    }
+    .staff-profile img {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-right: 10px;
+    }
+    .staff-profile .info {
+      font-size: 14px;
+    }
+    .staff-profile .info h4 {
+      margin: 4px 0;
+      font-size: 16px;
+    }
+    .staff-profile .info p {
+      margin: 2px 0;
+      color: #555;
+    }
 
     /* ======= モバイル調整 ======= */
     @media screen and (max-width: 480px) {
@@ -203,6 +231,13 @@
       .btn-submit {
         font-size: 14px;
         padding: 8px 0;
+      }
+      .staff-profile {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .staff-profile img {
+        margin-bottom: 8px;
       }
     }
   </style>
@@ -230,8 +265,17 @@
 
       <!-- スタッフ選択 -->
       <div class="staff-select">
-        <label for="staffSelect">担当者:</label>
+        <label for="staffSelect">担当者：</label>
         <select id="staffSelect"></select>
+      </div>
+
+      <!-- スタッフプロフィール表示 -->
+      <div id="staffProfile" class="staff-profile" style="display:none;">
+        <img id="staffPhoto" src="" alt="スタッフ写真" onerror="this.src='https://via.placeholder.com/60';" />
+        <div class="info">
+          <h4 id="staffName"></h4>
+          <p id="staffSpecialty"></p>
+        </div>
       </div>
 
       <!-- 週ナビゲーション付きカレンダー -->
@@ -265,7 +309,7 @@
       </div>
 
       <form id="detailForm" style="display:none;">
-        <!-- 初回予約：名前・電話・気になる点入力 -->
+        <!-- 初回予約：名前・電話入力欄 -->
         <div id="firstTimeFields">
           <div class="form-group">
             <label for="custNameInput">お名前</label>
@@ -277,7 +321,7 @@
           </div>
         </div>
 
-        <!-- 常連さんには表示しないが、どちらでもノートは表示 -->
+        <!-- 気になる点・メモ（全員表示） -->
         <div class="form-group">
           <label for="custNoteInput">気になる点・メモ（任意）</label>
           <textarea id="custNoteInput" placeholder="アレルギー等あればご記入ください"></textarea>
@@ -316,7 +360,7 @@
     let staffsData = [];                        // Firestore ― staffs コレクション
 
     let selectedMenu = null;                    // { id, name, photoURL, price, duration }
-    let selectedStaff = null;                   // { id, name }
+    let selectedStaff = null;                   // { id, name, photoURL, specialty }
     let selDateObj = null;                      // Date 型の予約日時
 
     let offsetWeeks = 0;                        // カレンダーの週オフセット
@@ -372,7 +416,8 @@
           };
         });
       } catch (err) {
-        container.innerHTML = `<p style="color:red;">メニュー読み込みに失敗しました: ${err.message}</p>`;
+        console.error("メニュー読み込みエラー:", err);
+        container.innerHTML = `<p style="color:red;">メニュー読み込みに失敗しました。</p>`;
       }
     }
 
@@ -399,8 +444,10 @@
         snap.forEach(doc => {
           const d = doc.data();
           staffsData.push({
-            id:   doc.id,
-            name: d.name || "スタッフ"
+            id:        doc.id,
+            name:      d.name || "スタッフ",
+            photoURL:  d.photoURL || "",
+            specialty: d.specialty || ""
           });
         });
       } catch (err) {
@@ -409,23 +456,25 @@
 
       // スタッフプルダウンを生成
       const sel = document.getElementById("staffSelect");
-      sel.innerHTML = "";
+      sel.innerHTML = "<option value=\"\">-- 担当者を選択 --</option>";
       staffsData.forEach(s => {
         const opt = document.createElement("option");
         opt.value = s.id;
         opt.textContent = s.name;
         sel.appendChild(opt);
       });
-      // 初期選択とイベント
-      if (staffsData.length > 0) {
-        selectedStaff = staffsData[0];
-        sel.value = selectedStaff.id;
-      }
+      // イベント登録
       sel.onchange = () => {
         const sid = sel.value;
-        selectedStaff = staffsData.find(x => x.id === sid);
+        selectedStaff = staffsData.find(x => x.id === sid) || null;
+        renderStaffProfile();
         offsetWeeks = 0;
         renderCalendar();
+      };
+
+      // 「戻る」ボタン
+      document.getElementById("backToMenuBtn").onclick = () => {
+        showView("menuView");
       };
 
       // 週ナビボタン
@@ -438,12 +487,7 @@
         renderCalendar();
       };
 
-      // 「戻る」ボタン
-      document.getElementById("backToMenuBtn").onclick = () => {
-        showView("menuView");
-      };
-
-      // 「次へ」ボタン（日時選択後に表示）
+      // 「次へ」ボタン
       document.getElementById("toDetailBtn").onclick = () => {
         if (!selDateObj) {
           alert("日時を選択してください");
@@ -452,10 +496,35 @@
         loadDetailView();
       };
 
-      // 初回カレンダー描画
-      renderCalendar();
+      // プルダウン未選択時はカレンダーを空にする
+      selectedStaff = null;
+      renderStaffProfile();   // プロフィール非表示
+      clearCalendarTable();
     }
 
+    // スタッフプロフィール表示／非表示
+    function renderStaffProfile() {
+      const profDiv = document.getElementById("staffProfile");
+      if (!selectedStaff) {
+        profDiv.style.display = "none";
+        return;
+      }
+      document.getElementById("staffPhoto").src = selectedStaff.photoURL || "https://via.placeholder.com/60";
+      document.getElementById("staffName").textContent = selectedStaff.name;
+      document.getElementById("staffSpecialty").textContent = selectedStaff.specialty;
+      profDiv.style.display = "flex";
+    }
+
+    // カレンダーを全クリア（プルダウン未選択時など）
+    function clearCalendarTable() {
+      document.getElementById("calendarHead").innerHTML = "";
+      document.getElementById("calendarBody").innerHTML = "";
+      document.getElementById("weekLabel").textContent = "";
+      document.getElementById("toDetailBtn").style.display = "none";
+      selDateObj = null;
+    }
+
+    // カレンダー描画
     async function renderCalendar() {
       const head = document.getElementById("calendarHead");
       const body = document.getElementById("calendarBody");
@@ -463,6 +532,12 @@
       body.innerHTML = "";
       document.getElementById("toDetailBtn").style.display = "none";
       selDateObj = null;
+
+      // スタッフが選択されていなければクリアのみ
+      if (!selectedStaff) {
+        clearCalendarTable();
+        return;
+      }
 
       // カレンダー範囲（週頭～週末）
       const today = new Date();
@@ -481,26 +556,28 @@
       }
       head.appendChild(hr);
 
-      // その週の予約を Firestore から取得（指定スタッフ＋メニュー）
-      const weekStartISO = startWeek.toISOString();
-      const weekEndISO = new Date(endWeek.getFullYear(), endWeek.getMonth(), endWeek.getDate(), 23,59,59).toISOString();
+      // その週の予約を Firestore から取得（指定スタッフ・メニュー）
       let reserved = [];
       try {
+        const weekStartISO = startWeek.toISOString();
+        const weekEndISO = new Date(endWeek.getFullYear(), endWeek.getMonth(), endWeek.getDate(), 23,59,59).toISOString();
         const snap = await db.collection("reservations")
           .where("datetime", ">=", weekStartISO)
           .where("datetime", "<=", weekEndISO)
           .where("staffId", "==", selectedStaff.id)
           .get();
+
         reserved = [];
         snap.forEach(doc => {
           const d = doc.data();
-          // menuId などでフィルタする場合もあるが、ここではスタッフだけ
+          // menuId や menuName でさらに絞る場合はここで判定（今回はスタッフのみ）
           const st = new Date(d.datetime);
           const en = new Date(st.getTime() + (selectedMenu.duration || 60) * 60000);
           reserved.push({ st, en });
         });
       } catch (err) {
-        alert("予約取得エラー: " + err.message);
+        console.error("予約取得エラー:", err);
+        // 画面上にはエラーメッセージを出さず、コンソールで確認できるようにする
       }
 
       // 時間帯リスト（10:00～17:30 30分刻み）
@@ -560,7 +637,7 @@
       document.getElementById("detailLoading").style.display = "block";
       document.getElementById("detailForm").style.display = "none";
 
-      // LIFF 初期化済みならスキップ。そうでなければ初期化＋ログイン
+      // LIFF 初期化とログイン
       try {
         await liff.init({ liffId: "2007345180-oVA2L6dw" });
         if (!liff.isLoggedIn()) {
@@ -584,7 +661,7 @@
         alert("顧客チェック失敗: " + err.message);
       }
 
-      // 既存顧客の場合は名前・電話欄を隠して表示しない
+      // 既存顧客の場合は名前・電話欄を隠す
       const firstFields = document.getElementById("firstTimeFields");
       if (exists) {
         firstFields.style.display = "none";
@@ -605,7 +682,7 @@
     // フォーム送信時
     document.getElementById("detailForm").onsubmit = async (e) => {
       e.preventDefault();
-      // 初回 or 常連問わず、ノートは取得
+      // ノートは取得
       const note = document.getElementById("custNoteInput").value.trim();
 
       // 初回予約の場合、名前・電話を取得
@@ -622,8 +699,8 @@
       // 予約データを Firestore に保存
       const data = {
         userId,
-        name: nameVal,
-        phone: phoneVal,
+        name:       nameVal,
+        phone:      phoneVal,
         menuId:     selectedMenu.id,
         menuName:   selectedMenu.name,
         price:      selectedMenu.price,
@@ -656,7 +733,7 @@
         } else {
           await custRef.set({
             userId,
-            name: nameVal,
+            name:  nameVal,
             phone: phoneVal,
             reservations: [
               {
