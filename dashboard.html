@@ -2,8 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>ダッシュボード - Salone Ponte</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ダッシュボード - Salone Ponte</n  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
       font-family: sans-serif;
@@ -56,8 +55,37 @@
     <div id="customers-btn" class="tab-button" onclick="switchTab('customers')">顧客リスト</div>
   </div>
 
-  <div id="reservations-content" class="tab-content"></div>
-  <div id="customers-content" class="tab-content"></div>
+  <!-- 予約管理コンテンツ -->
+  <div id="reservations-content" class="tab-content">
+    <h2>予約管理</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>名前</th>
+          <th>メニュー</th>
+          <th>日時</th>
+        </tr>
+      </thead>
+      <tbody id="reservations-body"></tbody>
+    </table>
+  </div>
+
+  <!-- 顧客リストコンテンツ -->
+  <div id="customers-content" class="tab-content">
+    <h2>顧客リスト</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>名前</th>
+          <th>電話番号</th>
+          <th>最新来店日</th>
+          <th>最新メニュー</th>
+          <th>詳細</th>
+        </tr>
+      </thead>
+      <tbody id="customers-body"></tbody>
+    </table>
+  </div>
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -80,26 +108,18 @@
       document.querySelectorAll(".tab-content").forEach(div => div.classList.remove("active"));
       document.getElementById(tabId + "-btn").classList.add("active");
       document.getElementById(tabId + "-content").classList.add("active");
+      if (tabId === 'reservations') {
+        renderReservations();
+      } else if (tabId === 'customers') {
+        renderCustomers();
+      }
     }
 
     async function renderReservations() {
-      const container = document.getElementById("reservations-content");
-      container.innerHTML = "<h2>予約管理</h2>";
-      const table = document.createElement("table");
-      table.innerHTML = `
-        <thead>
-          <tr>
-            <th>名前</th>
-            <th>メニュー</th>
-            <th>日時</th>
-          </tr>
-        </thead>
-        <tbody id="reservations-body"></tbody>`;
-      container.appendChild(table);
-
+      const tbody = document.getElementById("reservations-body");
+      tbody.innerHTML = '';
       try {
         const snapshot = await db.collection("reservations").orderBy("datetime", "desc").get();
-        const tbody = document.getElementById("reservations-body");
         snapshot.forEach(doc => {
           const data = doc.data();
           const tr = document.createElement("tr");
@@ -111,54 +131,37 @@
           tbody.appendChild(tr);
         });
       } catch (e) {
+        const container = document.getElementById("reservations-content");
         container.innerHTML += `<p style="color:red">予約の取得中にエラーが発生しました: ${e.message}</p>`;
       }
     }
 
-    async function renderCustomerList() {
-      const container = document.getElementById("customers-content");
-      container.innerHTML = "<h2>顧客リスト</h2>";
-      const table = document.createElement("table");
-      table.innerHTML = `
-        <thead>
-          <tr>
-            <th>名前</th>
-            <th>電話番号</th>
-            <th>来店回数</th>
-            <th>最新来店</th>
-            <th>履歴</th>
-          </tr>
-        </thead>
-        <tbody id="customers-body"></tbody>`;
-      container.appendChild(table);
-
-      const snapshot = await db.collection("customers").get();
-      const tbody = document.getElementById("customers-body");
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        const latest = data.reservations && data.reservations.length
-          ? new Date(data.reservations[data.reservations.length - 1].datetime).toLocaleString()
-          : "-";
-        const history = (data.reservations || [])
-          .map(r => `${new Date(r.datetime).toLocaleDateString()}：${r.menu}`)
-          .join("<br>");
-
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${data.name || "-"}</td>
-          <td>${data.phone || "-"}</td>
-          <td>${(data.reservations || []).length}</td>
-          <td>${latest}</td>
-          <td class="history">${history}</td>
-        `;
-        tbody.appendChild(tr);
-      });
+    async function renderCustomers() {
+      const tbody = document.getElementById('customers-body');
+      tbody.innerHTML = '';
+      try {
+        const snapshot = await db.collection('customers').orderBy('name').get();
+        snapshot.forEach(doc => {
+          const c = doc.data();
+          const last = c.reservations?.slice(-1)[0];
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${c.name}</td>
+            <td>${c.phone || '-'}</td>
+            <td>${last ? new Date(last.datetime).toLocaleDateString() : '-'}</td>
+            <td>${last ? last.menu : '-'}</td>
+            <td><button data-id="${doc.id}">詳細</button></td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (e) {
+        const container = document.getElementById("customers-content");
+        container.innerHTML += `<p style="color:red">顧客リストの取得中にエラーが発生しました: ${e.message}</p>`;
+      }
     }
 
     window.onload = () => {
       switchTab("reservations");
-      renderReservations();
-      renderCustomerList();
     };
   </script>
 </body>
