@@ -254,41 +254,31 @@
       </div>
     </div>
 
-   <!-- 省略：ヘッダーやスタイル部分などはそのまま -->
+    <!-- ========== 2. 担当者＋カレンダー選択画面 ========== -->
+    <div id="calendarView" class="view">
+      <h2>担当者と日時を選択</h2>
 
-<!-- ========== 2. 担当者＋カレンダー選択画面 ========== -->
-<div id="calendarView" class="view">
-    <h2>担当者と日時を選択</h2>
-  
-    <!-- 選択中メニュー情報表示 -->
-    <div id="selectedMenuInfo" style="text-align:center; margin-bottom:10px;">
-      <!-- 例：<strong>カット</strong> - ¥4,000 (所要60分) -->
-    </div>
-  
-    <!-- スタッフ選択 -->
-    <div class="staff-select">
-      <label for="staffSelect">担当者：</label>
-      <select id="staffSelect"></select>
-    </div>
-  
-    <!-- スタッフプロフィール表示 -->
-    <div id="staffProfile" class="staff-profile" style="display:none;">
-      <!-- ここを https://dummyimage.com に差し替え -->
-      <img id="staffPhoto"
-           src=""
-           alt="スタッフ写真"
-           onerror="this.src='https://dummyimage.com/60x60/cccccc/000000.png';" />
-      <div class="info">
-        <h4 id="staffName"></h4>
-        <p id="staffSpecialty"></p>
+      <!-- 選択中メニュー情報表示 -->
+      <div id="selectedMenuInfo" style="text-align:center; margin-bottom:10px;">
+        <!-- 例：<strong>カット</strong> - ¥4,000 (所要60分) -->
       </div>
-    </div>
-  
-    <!-- 以降カレンダー部分や詳細入力部分は同じ -->
-    <!-- 省略 -->
-  </div>
-  
-  
+
+      <!-- スタッフ選択 -->
+      <div class="staff-select">
+        <label for="staffSelect">担当者：</label>
+        <select id="staffSelect"></select>
+      </div>
+
+      <!-- スタッフプロフィール表示 -->
+      <div id="staffProfile" class="staff-profile" style="display:none;">
+        <!-- placeholder の URL を dummyimage.com に変更 -->
+        <img id="staffPhoto" src="" alt="スタッフ写真"
+             onerror="this.src='https://dummyimage.com/60x60/cccccc/000000.png';" />
+        <div class="info">
+          <h4 id="staffName"></h4>
+          <p id="staffSpecialty"></p>
+        </div>
+      </div>
 
       <!-- 週ナビゲーション付きカレンダー -->
       <div class="nav">
@@ -340,7 +330,8 @@
         </div>
 
         <button type="submit" class="btn-submit">予約を確定</button>
-        <button type="button" id="backToCalendarBtn" class="btn-submit" style="background:#6c757d; margin-top:6px;">
+        <button type="button" id="backToCalendarBtn" class="btn-submit"
+                style="background:#6c757d; margin-top:6px;">
           戻る
         </button>
       </form>
@@ -411,7 +402,8 @@
           const card = document.createElement("div");
           card.className = "menu-card";
           card.innerHTML = `
-            <img src="${menu.photoURL}" alt="${menu.name}" onerror="this.src='https://via.placeholder.com/150';" />
+            <img src="${menu.photoURL}" alt="${menu.name}"
+                 onerror="this.src='https://dummyimage.com/150x100/cccccc/000000.png';" />
             <div class="menu-info">
               <h3>${menu.name}</h3>
               <p>¥${menu.price.toLocaleString()}</p>
@@ -423,8 +415,8 @@
 
           // 選択ボタンにイベント
           card.querySelector(".menu-select-btn").onclick = () => {
-            const m = menusData.find(x => x.id === menu.id);
-            if (m) selectMenu(m);
+            console.log("メニューが選択されました:", menu);
+            selectMenu(menu);
           };
         });
       } catch (err) {
@@ -479,6 +471,7 @@
       sel.onchange = () => {
         const sid = sel.value;
         selectedStaff = staffsData.find(x => x.id === sid) || null;
+        console.log("選択されたスタッフ:", selectedStaff);
         renderStaffProfile();
         offsetWeeks = 0;
         renderCalendar();
@@ -501,6 +494,7 @@
 
       // 「次へ」ボタン
       document.getElementById("toDetailBtn").onclick = () => {
+        console.log("「次へ」ボタン押下時の selDateObj:", selDateObj);
         if (!selDateObj) {
           alert("日時を選択してください");
           return;
@@ -508,9 +502,9 @@
         loadDetailView();
       };
 
-      // プルダウン未選択時はカレンダーを空にする
+      // 初期状態ではスタッフ未選択なのでカレンダーはクリア
       selectedStaff = null;
-      renderStaffProfile();   // プロフィール非表示
+      renderStaffProfile();
       clearCalendarTable();
     }
 
@@ -521,7 +515,8 @@
         profDiv.style.display = "none";
         return;
       }
-      document.getElementById("staffPhoto").src = selectedStaff.photoURL || "https://via.placeholder.com/60";
+      document.getElementById("staffPhoto").src =
+        selectedStaff.photoURL || "https://dummyimage.com/60x60/cccccc/000000.png";
       document.getElementById("staffName").textContent = selectedStaff.name;
       document.getElementById("staffSpecialty").textContent = selectedStaff.specialty;
       profDiv.style.display = "flex";
@@ -573,6 +568,7 @@
       try {
         const weekStartISO = startWeek.toISOString();
         const weekEndISO = new Date(endWeek.getFullYear(), endWeek.getMonth(), endWeek.getDate(), 23,59,59).toISOString();
+        console.log("予約取得クエリ → staffId:", selectedStaff.id, ", datetime >= ", weekStartISO, ", <= ", weekEndISO);
         const snap = await db.collection("reservations")
           .where("datetime", ">=", weekStartISO)
           .where("datetime", "<=", weekEndISO)
@@ -582,11 +578,11 @@
         reserved = [];
         snap.forEach(doc => {
           const d = doc.data();
-          // menuId や menuName でさらに絞る場合はここで判定（今回はスタッフのみ）
           const st = new Date(d.datetime);
           const en = new Date(st.getTime() + (selectedMenu.duration || 60) * 60000);
           reserved.push({ st, en });
         });
+        console.log("取得した予約データ数:", reserved.length);
       } catch (err) {
         console.error("予約取得エラー:", err);
         // 画面上にはエラーメッセージを出さず、コンソールで確認できるようにする
@@ -621,6 +617,7 @@
             cell.textContent = "◯";
             cell.className = "available";
             cell.onclick = () => {
+              console.log("セルクリック: 日時 =>", d.toISOString());
               // 既存選択解除 → 今回セルに "selected" を付与
               document.querySelectorAll(".selected").forEach(c => c.classList.remove("selected"));
               cell.classList.add("selected");
@@ -659,6 +656,7 @@
         const profile = await liff.getProfile();
         userId = profile.userId;
         userName = profile.displayName;
+        console.log("LIFFログイン済み:", userId, userName);
       } catch (err) {
         alert("LINEログインエラー: " + err.message);
         return;
@@ -669,6 +667,7 @@
       try {
         const doc = await db.collection("customers").doc(userId).get();
         if (doc.exists) exists = true;
+        console.log("顧客存在チェック:", exists);
       } catch (err) {
         alert("顧客チェック失敗: " + err.message);
       }
@@ -694,6 +693,8 @@
     // フォーム送信時
     document.getElementById("detailForm").onsubmit = async (e) => {
       e.preventDefault();
+      console.log("detailForm onsubmit 発火");
+
       // ノートは取得
       const note = document.getElementById("custNoteInput").value.trim();
 
@@ -724,9 +725,11 @@
         createdAt:  new Date().toISOString()
       };
 
+      console.log("Firestore に保存するデータ:", data);
       try {
         // ① reservations に追加
-        await db.collection("reservations").add(data);
+        const resRef = await db.collection("reservations").add(data);
+        console.log("reservations ドキュメント追加成功:", resRef.id);
 
         // ② customers を作成/更新
         const custRef = db.collection("customers").doc(userId);
@@ -739,9 +742,8 @@
             staff:    selectedStaff.name,
             price:    selectedMenu.price
           });
-          await custRef.update({
-            reservations: arr
-          });
+          await custRef.update({ reservations: arr });
+          console.log("customers ドキュメントを更新");
         } else {
           await custRef.set({
             userId,
@@ -756,12 +758,14 @@
               }
             ]
           });
+          console.log("customers ドキュメントを新規作成");
         }
 
         alert("予約が確定しました！");
-        // 最初に戻す
+        // 一旦リロードして初期画面に戻す
         window.location.reload();
       } catch (err) {
+        console.error("Firestore 書き込みエラー:", err);
         alert("予約登録に失敗しました: " + err.message);
       }
     };
