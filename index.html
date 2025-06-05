@@ -254,29 +254,41 @@
       </div>
     </div>
 
-    <!-- ========== 2. 担当者＋カレンダー選択画面 ========== -->
-    <div id="calendarView" class="view">
-      <h2>担当者と日時を選択</h2>
+   <!-- 省略：ヘッダーやスタイル部分などはそのまま -->
 
-      <!-- 選択中メニュー情報表示 -->
-      <div id="selectedMenuInfo" style="text-align:center; margin-bottom:10px;">
-        <!-- 例：<strong>カット</strong> - ¥4,000 (所要60分) -->
+<!-- ========== 2. 担当者＋カレンダー選択画面 ========== -->
+<div id="calendarView" class="view">
+    <h2>担当者と日時を選択</h2>
+  
+    <!-- 選択中メニュー情報表示 -->
+    <div id="selectedMenuInfo" style="text-align:center; margin-bottom:10px;">
+      <!-- 例：<strong>カット</strong> - ¥4,000 (所要60分) -->
+    </div>
+  
+    <!-- スタッフ選択 -->
+    <div class="staff-select">
+      <label for="staffSelect">担当者：</label>
+      <select id="staffSelect"></select>
+    </div>
+  
+    <!-- スタッフプロフィール表示 -->
+    <div id="staffProfile" class="staff-profile" style="display:none;">
+      <!-- ここを https://dummyimage.com に差し替え -->
+      <img id="staffPhoto"
+           src=""
+           alt="スタッフ写真"
+           onerror="this.src='https://dummyimage.com/60x60/cccccc/000000.png';" />
+      <div class="info">
+        <h4 id="staffName"></h4>
+        <p id="staffSpecialty"></p>
       </div>
-
-      <!-- スタッフ選択 -->
-      <div class="staff-select">
-        <label for="staffSelect">担当者：</label>
-        <select id="staffSelect"></select>
-      </div>
-
-      <!-- スタッフプロフィール表示 -->
-      <div id="staffProfile" class="staff-profile" style="display:none;">
-        <img id="staffPhoto" src="" alt="スタッフ写真" onerror="this.src='https://via.placeholder.com/60';" />
-        <div class="info">
-          <h4 id="staffName"></h4>
-          <p id="staffSpecialty"></p>
-        </div>
-      </div>
+    </div>
+  
+    <!-- 以降カレンダー部分や詳細入力部分は同じ -->
+    <!-- 省略 -->
+  </div>
+  
+  
 
       <!-- 週ナビゲーション付きカレンダー -->
       <div class="nav">
