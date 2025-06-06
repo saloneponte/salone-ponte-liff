@@ -100,6 +100,9 @@
     .nav button:hover {
       background: #ddd;
     }
+    .calendar-wrapper {
+      overflow-x: auto;
+    }
     table {
       border-collapse: collapse;
       width: 100%;
@@ -128,10 +131,6 @@
     .selected {
       background: #007bff;
       color: #fff;
-    }
-    /* 横スクロール対応 */
-    .calendar-wrapper {
-      overflow-x: auto;
     }
 
     /* ======= フォーム入力 ======= */
@@ -315,11 +314,12 @@
         <div id="firstTimeFields">
           <div class="form-group">
             <label for="custNameInput">お名前</label>
-            <input type="text" id="custNameInput" required />
+            <!-- name 属性を追加 -->
+            <input type="text" id="custNameInput" name="custName" required />
           </div>
           <div class="form-group">
             <label for="custPhoneInput">電話番号</label>
-            <input type="tel" id="custPhoneInput" required />
+            <input type="tel"  id="custPhoneInput" name="custPhone" required />
           </div>
         </div>
 
@@ -379,9 +379,8 @@
       const container = document.getElementById("menusContainer");
       container.innerHTML = "";
       try {
-        // Firestore の menus コレクションを取得
         const snap = await db.collection("menus").get();
-        menusData = []; // 一旦クリア
+        menusData = [];
         snap.forEach(doc => {
           const d = doc.data();
           menusData.push({
@@ -397,7 +396,6 @@
           container.innerHTML = "<p>まだメニューが登録されていません。</p>";
           return;
         }
-        // カードを生成
         menusData.forEach(menu => {
           const card = document.createElement("div");
           card.className = "menu-card";
@@ -413,7 +411,6 @@
           `;
           container.appendChild(card);
 
-          // 選択ボタンにイベント
           card.querySelector(".menu-select-btn").onclick = () => {
             console.log("メニューが選択されました:", menu);
             selectMenu(menu);
@@ -427,13 +424,11 @@
 
     function selectMenu(menu) {
       selectedMenu = menu;
-      // 選択メニュー情報を表示
       const infoDiv = document.getElementById("selectedMenuInfo");
       infoDiv.innerHTML = `
         <strong>${menu.name}</strong><br>
         ¥${menu.price.toLocaleString()}（所要 ${menu.duration} 分）
       `;
-      // 次の画面へ
       loadStaffsAndShowCalendar();
     }
 
@@ -441,7 +436,7 @@
     async function loadStaffsAndShowCalendar() {
       showView("calendarView");
 
-      // Firestore の staffs コレクションを取得
+      // staffs コレクション取得
       try {
         const snap = await db.collection("staffs").get();
         staffsData = [];
@@ -458,7 +453,7 @@
         alert("スタッフ読み込みに失敗しました: " + err.message);
       }
 
-      // スタッフプルダウンを生成
+      // プルダウン生成
       const sel = document.getElementById("staffSelect");
       sel.innerHTML = "<option value=\"\">-- 担当者を選択 --</option>";
       staffsData.forEach(s => {
@@ -467,7 +462,6 @@
         opt.textContent = s.name;
         sel.appendChild(opt);
       });
-      // イベント登録
       sel.onchange = () => {
         const sid = sel.value;
         selectedStaff = staffsData.find(x => x.id === sid) || null;
@@ -502,13 +496,12 @@
         loadDetailView();
       };
 
-      // 初期状態ではスタッフ未選択なのでカレンダーはクリア
+      // 初期状態
       selectedStaff = null;
       renderStaffProfile();
       clearCalendarTable();
     }
 
-    // スタッフプロフィール表示／非表示
     function renderStaffProfile() {
       const profDiv = document.getElementById("staffProfile");
       if (!selectedStaff) {
@@ -522,7 +515,6 @@
       profDiv.style.display = "flex";
     }
 
-    // カレンダーを全クリア（プルダウン未選択時など）
     function clearCalendarTable() {
       document.getElementById("calendarHead").innerHTML = "";
       document.getElementById("calendarBody").innerHTML = "";
@@ -531,7 +523,6 @@
       selDateObj = null;
     }
 
-    // カレンダー描画
     async function renderCalendar() {
       const head = document.getElementById("calendarHead");
       const body = document.getElementById("calendarBody");
@@ -540,20 +531,17 @@
       document.getElementById("toDetailBtn").style.display = "none";
       selDateObj = null;
 
-      // スタッフが選択されていなければクリアのみ
       if (!selectedStaff) {
         clearCalendarTable();
         return;
       }
 
-      // カレンダー範囲（週頭～週末）
       const today = new Date();
       const startWeek = new Date(today);
       startWeek.setDate(today.getDate() + offsetWeeks * 7);
       const endWeek = new Date(startWeek);
       endWeek.setDate(startWeek.getDate() + 6);
 
-      // ヘッダー（日付＋曜日）
       const hr = document.createElement("tr");
       hr.innerHTML = "<th>時間</th>";
       for (let i = 0; i < 7; i++) {
@@ -563,12 +551,14 @@
       }
       head.appendChild(hr);
 
-      // その週の予約を Firestore から取得（指定スタッフ・メニュー）
+      // Firestore の複合クエリ (staffId & datetime) → インデックスが必要
       let reserved = [];
       try {
         const weekStartISO = startWeek.toISOString();
         const weekEndISO = new Date(endWeek.getFullYear(), endWeek.getMonth(), endWeek.getDate(), 23,59,59).toISOString();
-        console.log("予約取得クエリ → staffId:", selectedStaff.id, ", datetime >= ", weekStartISO, ", <= ", weekEndISO);
+        console.log("予約取得クエリ → staffId:", selectedStaff.id,
+                    ", datetime >=", weekStartISO,
+                    ", <=", weekEndISO);
         const snap = await db.collection("reservations")
           .where("datetime", ">=", weekStartISO)
           .where("datetime", "<=", weekEndISO)
@@ -585,10 +575,10 @@
         console.log("取得した予約データ数:", reserved.length);
       } catch (err) {
         console.error("予約取得エラー:", err);
-        // 画面上にはエラーメッセージを出さず、コンソールで確認できるようにする
+        // インデックス未作成の段階ではこのタイミングでエラー出続けます。
+        // → Firebase コンソールでインデックス作成後、再度ここが通るようになります。
       }
 
-      // 時間帯リスト（10:00～17:30 30分刻み）
       const times = [];
       for (let h = 10; h <= 17; h++) {
         for (let m = 0; m < 60; m += 30) {
@@ -596,7 +586,6 @@
         }
       }
 
-      // 各行（時間）ごとにループ
       times.forEach(t => {
         const tr = document.createElement("tr");
         tr.innerHTML = `<td>${t}</td>`;
@@ -608,7 +597,6 @@
           d.setHours(+hh, +mm, 0, 0);
           const end = new Date(d.getTime() + (selectedMenu.duration || 60) * 60000);
 
-          // 予約済みか判定
           const overlap = reserved.some(r => d < r.en && end > r.st);
           if (overlap) {
             cell.textContent = "×";
@@ -618,7 +606,6 @@
             cell.className = "available";
             cell.onclick = () => {
               console.log("セルクリック: 日時 =>", d.toISOString());
-              // 既存選択解除 → 今回セルに "selected" を付与
               document.querySelectorAll(".selected").forEach(c => c.classList.remove("selected"));
               cell.classList.add("selected");
               selDateObj = new Date(d);
@@ -630,7 +617,6 @@
         body.appendChild(tr);
       });
 
-      // 週ラベルを更新
       document.getElementById("weekLabel").textContent =
         `${formatDate(startWeek)} - ${formatDate(endWeek)}`;
     }
@@ -680,25 +666,20 @@
         firstFields.style.display = "block";
       }
 
-      // フォームを表示
       document.getElementById("detailLoading").style.display = "none";
       document.getElementById("detailForm").style.display = "block";
     }
 
-    // 「戻る」ボタン
     document.getElementById("backToCalendarBtn").onclick = () => {
       showView("calendarView");
     };
 
-    // フォーム送信時
     document.getElementById("detailForm").onsubmit = async (e) => {
       e.preventDefault();
       console.log("detailForm onsubmit 発火");
 
-      // ノートは取得
       const note = document.getElementById("custNoteInput").value.trim();
 
-      // 初回予約の場合、名前・電話を取得
       let nameVal = userName, phoneVal = "";
       if (document.getElementById("firstTimeFields").style.display !== "none") {
         nameVal = document.getElementById("custNameInput").value.trim();
@@ -709,7 +690,6 @@
         }
       }
 
-      // 予約データを Firestore に保存
       const data = {
         userId,
         name:       nameVal,
@@ -727,11 +707,9 @@
 
       console.log("Firestore に保存するデータ:", data);
       try {
-        // ① reservations に追加
         const resRef = await db.collection("reservations").add(data);
         console.log("reservations ドキュメント追加成功:", resRef.id);
 
-        // ② customers を作成/更新
         const custRef = db.collection("customers").doc(userId);
         const snap    = await custRef.get();
         if (snap.exists) {
@@ -762,7 +740,6 @@
         }
 
         alert("予約が確定しました！");
-        // 一旦リロードして初期画面に戻す
         window.location.reload();
       } catch (err) {
         console.error("Firestore 書き込みエラー:", err);
