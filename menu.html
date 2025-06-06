@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>メニュー一覧 - Salone Ponte</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 10px;
+    }
+    h1 {
+      font-size: 1.5em;
+      margin-bottom: 16px;
+    }
+    .menu-list {
+      list-style: none;
+      padding: 0;
+    }
+    .menu-item {
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+    }
+    .menu-item img {
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 4px;
+      margin-right: 12px;
+    }
+    .menu-item .info {
+      flex: 1;
+    }
+    .menu-item .info h2 {
+      margin: 0 0 4px 0;
+      font-size: 1.2em;
+    }
+    .menu-item .info p {
+      margin: 2px 0;
+      color: #555;
+      font-size: 0.9em;
+    }
+    .menu-item button {
+      padding: 8px 12px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .menu-item button:hover {
+      background-color: #218838;
+    }
+    .nav {
+      margin-top: 20px;
+    }
+    .nav a {
+      color: #007bff;
+      text-decoration: none;
+      font-size: 0.9em;
+    }
+    .nav a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>メニュー一覧</h1>
+
+  <ul class="menu-list" id="menuList">
+    <!-- JavaScript で Firestore からメニューを読み込み、ここに挿入します -->
+    <!-- 例）
+    <li class="menu-item">
+      <img src="https://example.com/images/cut.jpg" alt="カット" />
+      <div class="info">
+        <h2>カット</h2>
+        <p>価格：¥4,000</p>
+        <p>所要時間：60分</p>
+      </div>
+      <button onclick="goToCalendar('cut')">このメニューを選択</button>
+    </li>
+    -->
+  </ul>
+
+  <div class="nav">
+    <a href="index.html">← トップページに戻る</a>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+  <script>
+    // Firebase 初期化
+    const firebaseConfig = {
+      apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
+      authDomain: "salone-ponte-fceca.firebaseapp.com",
+      projectId: "salone-ponte-fceca"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // LIFF 初期化
+    let liffUserId = "";
+    (async () => {
+      await liff.init({ liffId: "2007345180-oVA2L6dw" });
+      if (!liff.isLoggedIn()) {
+        return liff.login();
+      }
+      const profile = await liff.getProfile();
+      liffUserId = profile.userId;
+      loadMenus();
+    })();
+
+    // Firestore から menus コレクションを取得して表示
+    async function loadMenus() {
+      const ul = document.getElementById("menuList");
+      ul.innerHTML = ""; // いったん空にする
+
+      try {
+        const snapshot = await db.collection("menus").orderBy("name").get();
+        snapshot.forEach(doc => {
+          const m = doc.data();
+          const li = document.createElement("li");
+          li.className = "menu-item";
+
+          // メニュー画像 (存在しない場合はダミー画像)
+          const img = document.createElement("img");
+          img.src = m.photoURL || "https://via.placeholder.com/60";
+          img.alt = m.name || "メニュー画像";
+          li.appendChild(img);
+
+          // メニュー情報
+          const info = document.createElement("div");
+          info.className = "info";
+          const h2 = document.createElement("h2");
+          h2.textContent = m.name || "-";
+          const pPrice = document.createElement("p");
+          pPrice.textContent = "価格：¥" + (m.price || "-");
+          const pDur = document.createElement("p");
+          pDur.textContent = "所要時間：" + (m.duration || "-") + "分";
+
+          info.appendChild(h2);
+          info.appendChild(pPrice);
+          info.appendChild(pDur);
+          li.appendChild(info);
+
+          // 「このメニューを選択」ボタン
+          const btn = document.createElement("button");
+          btn.textContent = "このメニューを選択";
+          btn.onclick = () => {
+            // メニュー選択後、calendar.html (※実際には index.html のカレンダー画面) に遷移し、
+            // 選んだメニュー ID（doc.id）をクエリパラメータに付与する
+            window.location.href = `index.html?menu=${encodeURIComponent(doc.id)}`;
+          };
+          li.appendChild(btn);
+
+          ul.appendChild(li);
+        });
+
+        // もし menus コレクションが空だった場合、サンプルを挿入する
+        if (ul.children.length === 0) {
+          ul.innerHTML = "<li>メニューが登録されていません。</li>";
+        }
+      } catch (e) {
+        ul.innerHTML = `<li style="color:red">メニューの読み込みに失敗しました：${e.message}</li>`;
+      }
+    }
+  </script>
+</body>
+</html>

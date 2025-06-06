@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>スタッフ一覧 - Salone Ponte</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 10px;
+    }
+    h1 {
+      font-size: 1.5em;
+      margin-bottom: 16px;
+    }
+    .staff-list {
+      list-style: none;
+      padding: 0;
+    }
+    .staff-item {
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+    }
+    .staff-item img {
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 50%;
+      margin-right: 12px;
+    }
+    .staff-item .info {
+      flex: 1;
+    }
+    .staff-item .info h2 {
+      margin: 0 0 4px 0;
+      font-size: 1.2em;
+    }
+    .staff-item .info p {
+      margin: 2px 0;
+      color: #555;
+      font-size: 0.9em;
+    }
+    .staff-item button {
+      padding: 8px 12px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .staff-item button:hover {
+      background-color: #0056b3;
+    }
+    .nav {
+      margin-top: 20px;
+    }
+    .nav a {
+      color: #007bff;
+      text-decoration: none;
+      font-size: 0.9em;
+    }
+    .nav a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>スタッフ一覧</h1>
+
+  <ul class="staff-list" id="staffList">
+    <!-- JavaScript で Firestore から staffs コレクションを読み込み、ここに挿入します -->
+    <!-- 例）
+    <li class="staff-item">
+      <img src="https://example.com/images/hanako.jpg" alt="佐藤花子" />
+      <div class="info">
+        <h2>佐藤花子</h2>
+        <p>得意スタイル：女性カット／ショート</p>
+      </div>
+      <button onclick="selectStaff('staff01')">このスタッフを選択</button>
+    </li>
+    -->
+  </ul>
+
+  <div class="nav">
+    <a href="menu.html">← メニュー一覧に戻る</a>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+  <script>
+    // Firebase 初期化
+    const firebaseConfig = {
+      apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
+      authDomain: "salone-ponte-fceca.firebaseapp.com",
+      projectId: "salone-ponte-fceca"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // LIFF 初期化
+    let liffUserId = "";
+    (async () => {
+      await liff.init({ liffId: "2007345180-oVA2L6dw" });
+      if (!liff.isLoggedIn()) {
+        return liff.login();
+      }
+      const profile = await liff.getProfile();
+      liffUserId = profile.userId;
+      loadStaffs();
+    })();
+
+    // Firestore から staffs コレクションを取得して表示
+    async function loadStaffs() {
+      const ul = document.getElementById("staffList");
+      ul.innerHTML = ""; // いったん空にする
+
+      try {
+        const snapshot = await db.collection("staffs").orderBy("name").get();
+        snapshot.forEach(doc => {
+          const s = doc.data();
+          const li = document.createElement("li");
+          li.className = "staff-item";
+
+          // スタッフ写真（存在しない場合はダミー画像）
+          const img = document.createElement("img");
+          img.src = s.photoURL || "https://via.placeholder.com/60";
+          img.alt = s.name || "スタッフ写真";
+          li.appendChild(img);
+
+          // スタッフ情報
+          const info = document.createElement("div");
+          info.className = "info";
+          const h2 = document.createElement("h2");
+          h2.textContent = s.name || "-";
+          const pSpe = document.createElement("p");
+          pSpe.textContent = "得意スタイル：" + (s.specialty || "-");
+
+          info.appendChild(h2);
+          info.appendChild(pSpe);
+          li.appendChild(info);
+
+          // 「このスタッフを選択」ボタン
+          const btn = document.createElement("button");
+          btn.textContent = "このスタッフを選択";
+          btn.onclick = () => {
+            // スタッフ選択後、index.html (カレンダー画面) に遷移し、
+            // 選んだスタッフ ID（doc.id）をクエリパラメータに付与する
+            window.location.href = `index.html?menu=${getQueryParam("menu")}&staff=${encodeURIComponent(doc.id)}`;
+          };
+          li.appendChild(btn);
+
+          ul.appendChild(li);
+        });
+
+        // もし staffs コレクションが空だった場合、サンプルを挿入する
+        if (ul.children.length === 0) {
+          ul.innerHTML = "<li>スタッフが登録されていません。</li>";
+        }
+      } catch (e) {
+        ul.innerHTML = `<li style="color:red">スタッフの読み込みに失敗しました：${e.message}</li>`;
+      }
+    }
+
+    // URL からクエリパラメータを取得する関数
+    function getQueryParam(key) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(key) || "";
+    }
+  </script>
+</body>
+</html>
