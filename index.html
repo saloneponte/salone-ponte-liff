@@ -241,6 +241,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <h2>Salone Ponte 予約</h2>
@@ -259,18 +260,19 @@
 
       <!-- 選択中メニュー情報表示 -->
       <div id="selectedMenuInfo" style="text-align:center; margin-bottom:10px;">
-        <!-- 例：<strong>カット</strong> - ¥4,000 (所要60分) -->
+        <!-- 例：<strong>カット</strong> - ¥4,000 (所要 60 分) -->
       </div>
 
       <!-- スタッフ選択 -->
       <div class="staff-select">
         <label for="staffSelect">担当者：</label>
-        <select id="staffSelect"></select>
+        <select id="staffSelect">
+          <option value="">-- 担当者を選択 --</option>
+        </select>
       </div>
 
       <!-- スタッフプロフィール表示 -->
       <div id="staffProfile" class="staff-profile" style="display:none;">
-        <!-- placeholder の URL を dummyimage.com に変更 -->
         <img id="staffPhoto" src="" alt="スタッフ写真"
              onerror="this.src='https://dummyimage.com/60x60/cccccc/000000.png';" />
         <div class="info">
@@ -314,12 +316,11 @@
         <div id="firstTimeFields">
           <div class="form-group">
             <label for="custNameInput">お名前</label>
-            <!-- name 属性を追加 -->
             <input type="text" id="custNameInput" name="custName" required />
           </div>
           <div class="form-group">
             <label for="custPhoneInput">電話番号</label>
-            <input type="tel"  id="custPhoneInput" name="custPhone" required />
+            <input type="tel" id="custPhoneInput" name="custPhone" required />
           </div>
         </div>
 
@@ -346,27 +347,26 @@
   <script>
     // ================= Firebase 初期化 =================
     const firebaseConfig = {
-      apiKey:    "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
-      authDomain: "salone-ponte-fceca.firebaseapp.com",
-      projectId: "salone-ponte-fceca",
+      apiKey:        "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
+      authDomain:    "salone-ponte-fceca.firebaseapp.com",
+      projectId:     "salone-ponte-fceca",
       storageBucket: "salone-ponte-fceca.appspot.com",
       messagingSenderId: "463711728652",
-      appId:     "1:463711728652:web:59c749e11d201b26b86a29",
+      appId:         "1:463711728652:web:59c749e11d201b26b86a29",
       measurementId: "G-MPWGTB6R7C"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
     // ================= グローバル変数 =================
-    let userId = "", userName = "";             // LIFFログインで取得
-    let menusData = [];                         // Firestore ― menus コレクション
-    let staffsData = [];                        // Firestore ― staffs コレクション
+    let userId     = "", userName = "";       // LIFF で取得
+    let menusData  = [];                      // Firestore − menus コレクション
+    let staffsData = [];                      // Firestore − staffs コレクション
 
-    let selectedMenu = null;                    // { id, name, photoURL, price, duration }
-    let selectedStaff = null;                   // { id, name, photoURL, specialty }
-    let selDateObj = null;                      // Date 型の予約日時
-
-    let offsetWeeks = 0;                        // カレンダーの週オフセット
+    let selectedMenu  = null;                 // { id, name, photoURL, price, duration }
+    let selectedStaff = null;                 // { id, name, photoURL, specialty }
+    let selDateObj    = null;                 // Date 型の予約日時
+    let offsetWeeks   = 0;                    // カレンダーの週オフセット
 
     // ================= ビュー切り替えヘルパー =================
     function showView(viewId) {
@@ -385,9 +385,9 @@
           const d = doc.data();
           menusData.push({
             id:       doc.id,
-            name:     d.name || "無名メニュー",
+            name:     d.name     || "無名メニュー",
             photoURL: d.photoURL || "",
-            price:    d.price || 0,
+            price:    d.price    || 0,
             duration: d.duration || 60
           });
         });
@@ -396,6 +396,7 @@
           container.innerHTML = "<p>まだメニューが登録されていません。</p>";
           return;
         }
+
         menusData.forEach(menu => {
           const card = document.createElement("div");
           card.className = "menu-card";
@@ -411,6 +412,7 @@
           `;
           container.appendChild(card);
 
+          // “選択する” ボタンが押されたとき
           card.querySelector(".menu-select-btn").onclick = () => {
             console.log("メニューが選択されました:", menu);
             selectMenu(menu);
@@ -436,7 +438,7 @@
     async function loadStaffsAndShowCalendar() {
       showView("calendarView");
 
-      // staffs コレクション取得
+      // Firestore から staffs コレクションを取得
       try {
         const snap = await db.collection("staffs").get();
         staffsData = [];
@@ -444,21 +446,21 @@
           const d = doc.data();
           staffsData.push({
             id:        doc.id,
-            name:      d.name || "スタッフ",
-            photoURL:  d.photoURL || "",
-            specialty: d.specialty || ""
+            name:      d.name       || "スタッフ",
+            photoURL:  d.photoURL   || "",
+            specialty: d.specialty  || ""
           });
         });
       } catch (err) {
         alert("スタッフ読み込みに失敗しました: " + err.message);
       }
 
-      // プルダウン生成
+      // プルダウンを生成
       const sel = document.getElementById("staffSelect");
-      sel.innerHTML = "<option value=\"\">-- 担当者を選択 --</option>";
+      sel.innerHTML = `<option value="">-- 担当者を選択 --</option>`;
       staffsData.forEach(s => {
         const opt = document.createElement("option");
-        opt.value = s.id;
+        opt.value       = s.id;
         opt.textContent = s.name;
         sel.appendChild(opt);
       });
@@ -508,9 +510,8 @@
         profDiv.style.display = "none";
         return;
       }
-      document.getElementById("staffPhoto").src =
-        selectedStaff.photoURL || "https://dummyimage.com/60x60/cccccc/000000.png";
-      document.getElementById("staffName").textContent = selectedStaff.name;
+      document.getElementById("staffPhoto").src        = selectedStaff.photoURL || "https://dummyimage.com/60x60/cccccc/000000.png";
+      document.getElementById("staffName").textContent  = selectedStaff.name;
       document.getElementById("staffSpecialty").textContent = selectedStaff.specialty;
       profDiv.style.display = "flex";
     }
@@ -524,10 +525,10 @@
     }
 
     async function renderCalendar() {
-      const head = document.getElementById("calendarHead");
-      const body = document.getElementById("calendarBody");
-      head.innerHTML = "";
-      body.innerHTML = "";
+      const headElem = document.getElementById("calendarHead");
+      const bodyElem = document.getElementById("calendarBody");
+      headElem.innerHTML = "";
+      bodyElem.innerHTML = "";
       document.getElementById("toDetailBtn").style.display = "none";
       selDateObj = null;
 
@@ -536,12 +537,14 @@
         return;
       }
 
-      const today = new Date();
+      // 今週の開始日、終了日を作成
+      const today     = new Date();
       const startWeek = new Date(today);
       startWeek.setDate(today.getDate() + offsetWeeks * 7);
-      const endWeek = new Date(startWeek);
+      const endWeek   = new Date(startWeek);
       endWeek.setDate(startWeek.getDate() + 6);
 
+      // ヘッダー行（時間＋日付＋曜日）
       const hr = document.createElement("tr");
       hr.innerHTML = "<th>時間</th>";
       for (let i = 0; i < 7; i++) {
@@ -549,20 +552,25 @@
         d.setDate(startWeek.getDate() + i);
         hr.innerHTML += `<th>${formatDate(d)}</th>`;
       }
-      head.appendChild(hr);
+      headElem.appendChild(hr);
 
-      // Firestore の複合クエリ (staffId & datetime) → インデックスが必要
+      // Firestore に保存されている「今週の / このスタッフの予約」を取得
       let reserved = [];
       try {
         const weekStartISO = startWeek.toISOString();
-        const weekEndISO = new Date(endWeek.getFullYear(), endWeek.getMonth(), endWeek.getDate(), 23,59,59).toISOString();
-        console.log("予約取得クエリ → staffId:", selectedStaff.id,
-                    ", datetime >=", weekStartISO,
-                    ", <=", weekEndISO);
+        const weekEndISO   = new Date(endWeek.getFullYear(), endWeek.getMonth(), endWeek.getDate(), 23, 59, 59).toISOString();
+        console.log(
+          "予約取得クエリ → staffId:", selectedStaff.id,
+          ", datetime >=", weekStartISO,
+          ", <=", weekEndISO
+        );
+
+        // ※ 複合クエリには必ず orderBy("datetime") を追加しないとインデックスエラーになります
         const snap = await db.collection("reservations")
+          .where("staffId", "==", selectedStaff.id)
           .where("datetime", ">=", weekStartISO)
           .where("datetime", "<=", weekEndISO)
-          .where("staffId", "==", selectedStaff.id)
+          .orderBy("datetime", "asc")
           .get();
 
         reserved = [];
@@ -575,14 +583,16 @@
         console.log("取得した予約データ数:", reserved.length);
       } catch (err) {
         console.error("予約取得エラー:", err);
-        // インデックス未作成の段階ではこのタイミングでエラー出続けます。
-        // → Firebase コンソールでインデックス作成後、再度ここが通るようになります。
+        // → インデックス未作成の場合はここでエラーが出続けます。
+        //    Firebase コンソールで「staffId+datetime」の複合インデックスを作成後、
+        //    再度アプリをリロードすると正常に動くようになります。
       }
 
+      // 10:00 ～ 17:30 まで 30 分刻みでセルを生成
       const times = [];
       for (let h = 10; h <= 17; h++) {
         for (let m = 0; m < 60; m += 30) {
-          times.push(`${String(h).padStart(2,"0")}:${m===0?"00":"30"}`);
+          times.push(`${String(h).padStart(2, "0")}:${m===0?"00":"30"}`);
         }
       }
 
@@ -591,13 +601,14 @@
         tr.innerHTML = `<td>${t}</td>`;
         for (let i = 0; i < 7; i++) {
           const cell = document.createElement("td");
-          const d = new Date(startWeek);
+          const d    = new Date(startWeek);
           d.setDate(startWeek.getDate() + i);
           const [hh, mm] = t.split(":");
           d.setHours(+hh, +mm, 0, 0);
-          const end = new Date(d.getTime() + (selectedMenu.duration || 60) * 60000);
 
+          const end = new Date(d.getTime() + (selectedMenu.duration || 60) * 60000);
           const overlap = reserved.some(r => d < r.en && end > r.st);
+
           if (overlap) {
             cell.textContent = "×";
             cell.className = "unavailable";
@@ -614,7 +625,7 @@
           }
           tr.appendChild(cell);
         }
-        body.appendChild(tr);
+        bodyElem.appendChild(tr);
       });
 
       document.getElementById("weekLabel").textContent =
@@ -640,7 +651,7 @@
           return;
         }
         const profile = await liff.getProfile();
-        userId = profile.userId;
+        userId   = profile.userId;
         userName = profile.displayName;
         console.log("LIFFログイン済み:", userId, userName);
       } catch (err) {
@@ -658,16 +669,22 @@
         alert("顧客チェック失敗: " + err.message);
       }
 
-      // 既存顧客の場合は名前・電話欄を隠す
-      const firstFields = document.getElementById("firstTimeFields");
+      // 既存顧客の場合は名前・電話欄を非表示かつ required を外す
+      const firstFields  = document.getElementById("firstTimeFields");
+      const nameInputEl  = document.getElementById("custNameInput");
+      const phoneInputEl = document.getElementById("custPhoneInput");
       if (exists) {
         firstFields.style.display = "none";
+        nameInputEl.removeAttribute("required");
+        phoneInputEl.removeAttribute("required");
       } else {
         firstFields.style.display = "block";
+        nameInputEl.setAttribute("required", "required");
+        phoneInputEl.setAttribute("required", "required");
       }
 
       document.getElementById("detailLoading").style.display = "none";
-      document.getElementById("detailForm").style.display = "block";
+      document.getElementById("detailForm").style.display    = "block";
     }
 
     document.getElementById("backToCalendarBtn").onclick = () => {
@@ -680,9 +697,10 @@
 
       const note = document.getElementById("custNoteInput").value.trim();
 
-      let nameVal = userName, phoneVal = "";
+      let nameVal  = userName;
+      let phoneVal = "";
       if (document.getElementById("firstTimeFields").style.display !== "none") {
-        nameVal = document.getElementById("custNameInput").value.trim();
+        nameVal  = document.getElementById("custNameInput").value.trim();
         phoneVal = document.getElementById("custPhoneInput").value.trim();
         if (!nameVal || !phoneVal) {
           alert("お名前と電話番号を入力してください");
@@ -691,28 +709,31 @@
       }
 
       const data = {
-        userId,
-        name:       nameVal,
-        phone:      phoneVal,
-        menuId:     selectedMenu.id,
-        menuName:   selectedMenu.name,
-        price:      selectedMenu.price,
-        duration:   selectedMenu.duration,
-        staffId:    selectedStaff.id,
-        staffName:  selectedStaff.name,
-        datetime:   selDateObj.toISOString(),
-        note:       note,
-        createdAt:  new Date().toISOString()
+        userId:      userId,
+        name:        nameVal,
+        phone:       phoneVal,
+        menuId:      selectedMenu.id,
+        menuName:    selectedMenu.name,
+        price:       selectedMenu.price,
+        duration:    selectedMenu.duration,
+        staffId:     selectedStaff.id,
+        staffName:   selectedStaff.name,
+        datetime:    selDateObj.toISOString(),
+        note:        note,
+        createdAt:   new Date().toISOString()
       };
 
       console.log("Firestore に保存するデータ:", data);
       try {
+        // 1) reservations コレクションに追加
         const resRef = await db.collection("reservations").add(data);
         console.log("reservations ドキュメント追加成功:", resRef.id);
 
+        // 2) customers コレクションを更新 or 作成
         const custRef = db.collection("customers").doc(userId);
         const snap    = await custRef.get();
         if (snap.exists) {
+          // 既存顧客 → 履歴に今回の予約を push
           const arr = snap.data().reservations || [];
           arr.push({
             menu:     selectedMenu.name,
@@ -723,10 +744,11 @@
           await custRef.update({ reservations: arr });
           console.log("customers ドキュメントを更新");
         } else {
+          // 新規顧客 → ドキュメントを作成
           await custRef.set({
-            userId,
-            name:  nameVal,
-            phone: phoneVal,
+            userId:     userId,
+            name:       nameVal,
+            phone:      phoneVal,
             reservations: [
               {
                 menu:     selectedMenu.name,
@@ -740,6 +762,7 @@
         }
 
         alert("予約が確定しました！");
+        // 成功したらリロードして最初のメニュー選択に戻す
         window.location.reload();
       } catch (err) {
         console.error("Firestore 書き込みエラー:", err);
