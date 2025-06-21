@@ -152,6 +152,7 @@
       font-size: 14px;
       border: 1px solid #ccc;
       border-radius: 4px;
+      box-sizing: border-box;
     }
     .form-group textarea {
       resize: vertical;
@@ -169,6 +170,10 @@
     }
     .btn-submit:hover {
       background: #218838;
+    }
+    .btn-submit:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
     }
 
     /* ======= スタッフ選択 ======= */
@@ -209,6 +214,16 @@
     .staff-profile .info p {
       margin: 2px 0;
       color: #555;
+    }
+
+    /* ======= エラー表示 ======= */
+    .error-message {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      border: 1px solid #f5c6cb;
     }
 
     /* ======= モバイル調整 ======= */
@@ -312,15 +327,17 @@
       </div>
 
       <form id="detailForm" style="display:none;">
+        <div id="formError" class="error-message" style="display:none;"></div>
+        
         <!-- 初回予約：名前・電話入力欄 -->
         <div id="firstTimeFields">
           <div class="form-group">
             <label for="custNameInput">お名前</label>
-            <input type="text" id="custNameInput" name="custName" required />
+            <input type="text" id="custNameInput" name="custName" placeholder="例）山田 太郎" />
           </div>
           <div class="form-group">
             <label for="custPhoneInput">電話番号</label>
-            <input type="tel" id="custPhoneInput" name="custPhone" required />
+            <input type="tel" id="custPhoneInput" name="custPhone" placeholder="例）09012345678" />
           </div>
         </div>
 
@@ -368,6 +385,20 @@
     let selDateObj    = null;                 // Date 型の予約日時
     let offsetWeeks   = 0;                    // カレンダーの週オフセット
 
+    // ================= エラーハンドリング =================
+    function showError(message) {
+      const errorDiv = document.getElementById("formError");
+      if (errorDiv) {
+        errorDiv.textContent = message;
+        errorDiv.style.display = "block";
+        setTimeout(() => {
+          errorDiv.style.display = "none";
+        }, 5000);
+      } else {
+        alert(message);
+      }
+    }
+
     // ================= ビュー切り替えヘルパー =================
     function showView(viewId) {
       document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
@@ -377,7 +408,7 @@
     // ================= 1. メニュー選択画面 =================
     async function loadMenus() {
       const container = document.getElementById("menusContainer");
-      container.innerHTML = "";
+      container.innerHTML = "読み込み中...";
       try {
         const snap = await db.collection("menus").get();
         menusData = [];
@@ -391,6 +422,8 @@
             duration: d.duration || 60
           });
         });
+
+        container.innerHTML = "";
 
         if (menusData.length === 0) {
           container.innerHTML = "<p>まだメニューが登録されていません。</p>";
@@ -412,7 +445,7 @@
           `;
           container.appendChild(card);
 
-          // “選択する” ボタンが押されたとき
+          // "選択する" ボタンが押されたとき
           card.querySelector(".menu-select-btn").onclick = () => {
             console.log("メニューが選択されました:", menu);
             selectMenu(menu);
@@ -452,7 +485,7 @@
           });
         });
       } catch (err) {
-        alert("スタッフ読み込みに失敗しました: " + err.message);
+        showError("スタッフ読み込みに失敗しました: " + err.message);
       }
 
       // プルダウンを生成
@@ -492,7 +525,7 @@
       document.getElementById("toDetailBtn").onclick = () => {
         console.log("「次へ」ボタン押下時の selDateObj:", selDateObj);
         if (!selDateObj) {
-          alert("日時を選択してください");
+          showError("日時を選択してください");
           return;
         }
         loadDetailView();
@@ -655,7 +688,7 @@
         userName = profile.displayName;
         console.log("LIFFログイン済み:", userId, userName);
       } catch (err) {
-        alert("LINEログインエラー: " + err.message);
+        showError("LINEログインエラー: " + err.message);
         return;
       }
 
@@ -666,19 +699,24 @@
         if (doc.exists) exists = true;
         console.log("顧客存在チェック:", exists);
       } catch (err) {
-        alert("顧客チェック失敗: " + err.message);
+        showError("顧客チェック失敗: " + err.message);
+        return;
       }
 
-      // 既存顧客の場合は名前・電話欄を非表示かつ required を外す
+      // DOM取得
       const firstFields  = document.getElementById("firstTimeFields");
       const nameInputEl  = document.getElementById("custNameInput");
       const phoneInputEl = document.getElementById("custPhoneInput");
+
       if (exists) {
+        // 既存顧客 → 非表示にして required を解除
         firstFields.style.display = "none";
         nameInputEl.removeAttribute("required");
         phoneInputEl.removeAttribute("required");
       } else {
+        // 新規顧客 → 表示して必須に
         firstFields.style.display = "block";
+        nameInputEl.value = userName || ""; // LINE名を初期値に
         nameInputEl.setAttribute("required", "required");
         phoneInputEl.setAttribute("required", "required");
       }
@@ -693,47 +731,46 @@
 
     document.getElementById("detailForm").onsubmit = async (e) => {
       e.preventDefault();
-      console.log("detailForm onsubmit 発火");
 
-      const note = document.getElementById("custNoteInput").value.trim();
+      const submitBtn = document.querySelector("button[type='submit']");
+      submitBtn.disabled = true;
+      submitBtn.textContent = "送信中...";
 
-      let nameVal  = userName;
-      let phoneVal = "";
-      if (document.getElementById("firstTimeFields").style.display !== "none") {
-        nameVal  = document.getElementById("custNameInput").value.trim();
-        phoneVal = document.getElementById("custPhoneInput").value.trim();
-        if (!nameVal || !phoneVal) {
-          alert("お名前と電話番号を入力してください");
-          return;
-        }
-      }
-
-      const data = {
-        userId:      userId,
-        name:        nameVal,
-        phone:       phoneVal,
-        menuId:      selectedMenu.id,
-        menuName:    selectedMenu.name,
-        price:       selectedMenu.price,
-        duration:    selectedMenu.duration,
-        staffId:     selectedStaff.id,
-        staffName:   selectedStaff.name,
-        datetime:    selDateObj.toISOString(),
-        note:        note,
-        createdAt:   new Date().toISOString()
-      };
-
-      console.log("Firestore に保存するデータ:", data);
       try {
-        // 1) reservations コレクションに追加
-        const resRef = await db.collection("reservations").add(data);
-        console.log("reservations ドキュメント追加成功:", resRef.id);
+        const note = document.getElementById("custNoteInput").value.trim();
 
-        // 2) customers コレクションを更新 or 作成
+        let nameVal = userName;
+        let phoneVal = "";
+        
+        if (document.getElementById("firstTimeFields").style.display !== "none") {
+          nameVal = document.getElementById("custNameInput").value.trim();
+          phoneVal = document.getElementById("custPhoneInput").value.trim();
+          if (!nameVal || !phoneVal) {
+            throw new Error("お名前と電話番号を入力してください");
+          }
+        }
+
+        const data = {
+          userId:      userId,
+          name:        nameVal,
+          phone:       phoneVal,
+          menuId:      selectedMenu.id,
+          menuName:    selectedMenu.name,
+          price:       selectedMenu.price,
+          duration:    selectedMenu.duration,
+          staffId:     selectedStaff.id,
+          staffName:   selectedStaff.name,
+          datetime:    selDateObj.toISOString(),
+          note:        note,
+          createdAt:   new Date().toISOString()
+        };
+
+        const resRef = await db.collection("reservations").add(data);
+
         const custRef = db.collection("customers").doc(userId);
         const snap    = await custRef.get();
+
         if (snap.exists) {
-          // 既存顧客 → 履歴に今回の予約を push
           const arr = snap.data().reservations || [];
           arr.push({
             menu:     selectedMenu.name,
@@ -742,31 +779,27 @@
             price:    selectedMenu.price
           });
           await custRef.update({ reservations: arr });
-          console.log("customers ドキュメントを更新");
         } else {
-          // 新規顧客 → ドキュメントを作成
           await custRef.set({
-            userId:     userId,
-            name:       nameVal,
-            phone:      phoneVal,
-            reservations: [
-              {
-                menu:     selectedMenu.name,
-                datetime: selDateObj.toISOString(),
-                staff:    selectedStaff.name,
-                price:    selectedMenu.price
-              }
-            ]
+            userId: userId,
+            name: nameVal,
+            phone: phoneVal,
+            reservations: [{
+              menu:     selectedMenu.name,
+              datetime: selDateObj.toISOString(),
+              staff:    selectedStaff.name,
+              price:    selectedMenu.price
+            }]
           });
-          console.log("customers ドキュメントを新規作成");
         }
 
         alert("予約が確定しました！");
-        // 成功したらリロードして最初のメニュー選択に戻す
-        window.location.reload();
+        window.location.href = 'confirm.html';
       } catch (err) {
         console.error("Firestore 書き込みエラー:", err);
-        alert("予約登録に失敗しました: " + err.message);
+        showError("予約登録に失敗しました: " + err.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "予約を確定";
       }
     };
 
