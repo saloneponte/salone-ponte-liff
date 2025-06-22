@@ -2,681 +2,716 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>Salone Ponte 予約フロー</title>
+  <title>Salone Ponte - ご予約</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    /* ======= 全体スタイル ======= */
-    body {
+    /* ホットペッパー風のデザイン */
+    * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: sans-serif;
-      background: #f9f9f9;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
       color: #333;
+      line-height: 1.6;
     }
+
     .container {
-      max-width: 480px;
+      max-width: 600px;
       margin: 0 auto;
-      padding: 10px;
+      background: white;
+      min-height: 100vh;
     }
-    h2 {
-      margin-top: 20px;
-      margin-bottom: 10px;
-      font-size: 20px;
+
+    /* ヘッダー */
+    .header {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ff5722 100%);
+      color: white;
+      padding: 20px;
       text-align: center;
-    }
-    button {
-      cursor: pointer;
+      position: relative;
     }
 
-    /* ======= 画面セクション ======= */
-    .view {
-      display: none;
-    }
-    .view.active {
-      display: block;
+    .header h1 {
+      font-size: 24px;
+      margin-bottom: 5px;
     }
 
-    /* ======= メニューカード ======= */
-    .menus-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 10px;
-      margin-top: 10px;
+    .header p {
+      font-size: 14px;
+      opacity: 0.9;
     }
-    .menu-card {
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 8px;
+
+    /* プログレス */
+    .progress {
+      background: rgba(255,255,255,0.2);
+      height: 4px;
+      margin-top: 15px;
+      border-radius: 2px;
       overflow: hidden;
-      text-align: center;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-      transition: box-shadow 0.2s;
-    }
-    .menu-card:hover {
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    }
-    .menu-card img {
-      width: 100%;
-      height: 100px;
-      object-fit: cover;
-    }
-    .menu-info {
-      padding: 8px;
-    }
-    .menu-info h3 {
-      margin: 6px 0 4px;
-      font-size: 16px;
-    }
-    .menu-info p {
-      margin: 2px 0;
-      font-size: 14px;
-    }
-    .menu-select-btn {
-      margin-top: 6px;
-      padding: 6px 12px;
-      background: #007bff;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      font-size: 14px;
-    }
-    .menu-select-btn:hover {
-      background: #0056b3;
     }
 
-    /* ======= カレンダー ======= */
-    .nav {
+    .progress-bar {
+      background: white;
+      height: 100%;
+      transition: width 0.3s ease;
+      border-radius: 2px;
+    }
+
+    /* ステップ表示 */
+    .steps {
       display: flex;
-      justify-content: space-between;
-      margin: 10px 0;
+      justify-content: center;
+      padding: 20px;
+      background: #fff8f0;
+      border-bottom: 1px solid #ffe0b3;
     }
-    .nav button {
-      padding: 4px 8px;
-      border: 1px solid #ccc;
-      background: #f0f0f0;
-      cursor: pointer;
-      border-radius: 4px;
+
+    .step {
+      flex: 1;
+      text-align: center;
+      position: relative;
     }
-    .nav button:hover {
+
+    .step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: 15px;
+      right: -50%;
+      width: 100%;
+      height: 2px;
       background: #ddd;
     }
-    .calendar-wrapper {
-      overflow-x: auto;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 6px;
-      text-align: center;
-      font-size: 12px;
-      white-space: nowrap;
-    }
-    th {
-      background: #f0f0f0;
-    }
-    .available {
-      background: #cce5ff;
-      cursor: pointer;
-    }
-    .available:hover {
-      background: #99ccff;
-    }
-    .unavailable {
-      background: #f8d7da;
-      color: #721c24;
-    }
-    .selected {
-      background: #007bff;
-      color: #fff;
+
+    .step.active .step-number {
+      background: #ff5722;
+      color: white;
     }
 
-    /* ======= フォーム入力 ======= */
-    .form-group {
-      margin-bottom: 12px;
+    .step.completed .step-number {
+      background: #4caf50;
+      color: white;
     }
-    .form-group label {
-      display: block;
-      margin-bottom: 4px;
+
+    .step.completed::after {
+      background: #4caf50;
+    }
+
+    .step-number {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #ddd;
+      color: #666;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       font-weight: bold;
-    }
-    .form-group input[type="text"],
-    .form-group input[type="tel"],
-    .form-group textarea,
-    .form-group select,
-    .form-group input[type="datetime-local"] {
-      width: 100%;
-      padding: 8px 10px;
       font-size: 14px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      box-sizing: border-box;
-    }
-    .form-group textarea {
-      resize: vertical;
-      min-height: 60px;
-    }
-    .btn-submit {
-      width: 100%;
-      background: #28a745;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      padding: 10px 0;
-      font-size: 16px;
-      margin-top: 10px;
-    }
-    .btn-submit:hover {
-      background: #218838;
-    }
-    .btn-submit:disabled {
-      background: #6c757d;
-      cursor: not-allowed;
+      margin-bottom: 5px;
     }
 
-    /* ======= スタッフ選択 ======= */
-    .staff-select {
-      margin: 10px 0;
+    .step-label {
+      font-size: 12px;
+      color: #666;
     }
-    .staff-select select {
-      width: 100%;
-      padding: 8px 10px;
-      font-size: 14px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
+
+    /* セクション共通 */
+    .section {
+      display: none;
+      padding: 20px;
     }
-    .staff-profile {
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 10px;
+
+    .section.active {
+      display: block;
+    }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 20px;
+      color: #333;
+      text-align: center;
+    }
+
+    /* メニュー選択 */
+    .menu-grid {
+      display: grid;
+      gap: 15px;
+    }
+
+    .menu-item {
+      border: 2px solid #f0f0f0;
+      border-radius: 12px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: white;
+    }
+
+    .menu-item:hover {
+      border-color: #ff5722;
+      box-shadow: 0 4px 12px rgba(255,87,34,0.15);
+    }
+
+    .menu-item.selected {
+      border-color: #ff5722;
+      background: #fff3f0;
+    }
+
+    .menu-header {
       display: flex;
       align-items: center;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
       margin-bottom: 10px;
     }
-    .staff-profile img {
+
+    .menu-image {
+      width: 60px;
+      height: 60px;
+      border-radius: 8px;
+      object-fit: cover;
+      margin-right: 15px;
+    }
+
+    .menu-info h3 {
+      font-size: 18px;
+      margin-bottom: 5px;
+      color: #333;
+    }
+
+    .menu-price {
+      font-size: 20px;
+      font-weight: bold;
+      color: #ff5722;
+    }
+
+    .menu-duration {
+      color: #666;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+
+    .menu-description {
+      color: #666;
+      font-size: 14px;
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+
+    /* スタッフ選択 */
+    .staff-grid {
+      display: grid;
+      gap: 15px;
+    }
+
+    .staff-item {
+      border: 2px solid #f0f0f0;
+      border-radius: 12px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: white;
+    }
+
+    .staff-item:hover {
+      border-color: #ff5722;
+      box-shadow: 0 4px 12px rgba(255,87,34,0.15);
+    }
+
+    .staff-item.selected {
+      border-color: #ff5722;
+      background: #fff3f0;
+    }
+
+    .staff-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .staff-image {
       width: 60px;
       height: 60px;
       border-radius: 50%;
       object-fit: cover;
-      margin-right: 10px;
+      margin-right: 15px;
     }
-    .staff-profile .info {
+
+    .staff-info h3 {
+      font-size: 18px;
+      margin-bottom: 5px;
+      color: #333;
+    }
+
+    .staff-role {
+      color: #ff5722;
       font-size: 14px;
+      font-weight: bold;
     }
-    .staff-profile .info h4 {
-      margin: 4px 0;
+
+    .staff-specialty {
+      color: #666;
+      font-size: 14px;
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+
+    /* 日時選択 */
+    .datetime-section {
+      margin-bottom: 30px;
+    }
+
+    .date-picker {
+      margin-bottom: 25px;
+    }
+
+    .date-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+      margin-top: 10px;
+    }
+
+    .date-item {
+      aspect-ratio: 1;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: white;
+      font-size: 12px;
+    }
+
+    .date-item:hover {
+      border-color: #ff5722;
+      background: #fff3f0;
+    }
+
+    .date-item.selected {
+      background: #ff5722;
+      color: white;
+      border-color: #ff5722;
+    }
+
+    .date-item.disabled {
+      background: #f5f5f5;
+      color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .date-day {
+      font-size: 10px;
+      margin-bottom: 2px;
+    }
+
+    .date-number {
+      font-weight: bold;
+    }
+
+    .time-picker {
+      margin-top: 20px;
+    }
+
+    .time-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .time-slot {
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: white;
+    }
+
+    .time-slot:hover {
+      border-color: #ff5722;
+      background: #fff3f0;
+    }
+
+    .time-slot.selected {
+      background: #ff5722;
+      color: white;
+      border-color: #ff5722;
+    }
+
+    .time-slot.disabled {
+      background: #f5f5f5;
+      color: #ccc;
+      cursor: not-allowed;
+    }
+
+    /* 確認画面 */
+    .booking-summary {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 15px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #dee2e6;
+    }
+
+    .summary-row:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+    }
+
+    .summary-label {
+      color: #666;
+      font-weight: 500;
+    }
+
+    .summary-value {
+      font-weight: bold;
+      color: #333;
+    }
+
+    .total-price {
+      font-size: 24px;
+      color: #ff5722;
+    }
+
+    /* フォーム（新規顧客用） */
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #f0f0f0;
+      border-radius: 8px;
       font-size: 16px;
-    }
-    .staff-profile .info p {
-      margin: 2px 0;
-      color: #555;
+      transition: border-color 0.3s ease;
     }
 
-    /* ======= エラー表示 ======= */
+    .form-input:focus {
+      outline: none;
+      border-color: #ff5722;
+    }
+
+    .form-textarea {
+      min-height: 100px;
+      resize: vertical;
+      font-family: inherit;
+    }
+
+    /* ボタン */
+    .btn {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-bottom: 15px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #ff5722 0%, #ff3d00 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(255,87,34,0.3);
+    }
+
+    .btn-primary:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .btn-secondary {
+      background: white;
+      color: #666;
+      border: 2px solid #f0f0f0;
+    }
+
+    .btn-secondary:hover {
+      border-color: #ddd;
+      background: #f8f9fa;
+    }
+
+    /* エラーメッセージ */
     .error-message {
-      background: #f8d7da;
-      color: #721c24;
-      padding: 10px;
-      border-radius: 4px;
-      margin-bottom: 10px;
-      border: 1px solid #f5c6cb;
+      background: #ffe6e6;
+      color: #d63384;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border-left: 4px solid #d63384;
+      display: none;
     }
 
-    /* ======= モバイル調整 ======= */
-    @media screen and (max-width: 480px) {
-      .menu-info h3 {
-        font-size: 14px;
+    /* ローディング */
+    .loading {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f0f0f0;
+      border-top: 4px solid #ff5722;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* レスポンシブ */
+    @media (max-width: 480px) {
+      .container {
+        margin: 0;
       }
-      .menu-info p {
-        font-size: 12px;
+
+      .header {
+        padding: 15px;
       }
-      .nav button {
-        font-size: 12px;
-        padding: 4px 6px;
+
+      .header h1 {
+        font-size: 20px;
       }
-      th, td {
-        font-size: 10px;
-        padding: 4px;
+
+      .section {
+        padding: 15px;
       }
-      .btn-submit {
-        font-size: 14px;
-        padding: 8px 0;
-      }
-      .staff-profile {
+
+      .menu-header,
+      .staff-header {
         flex-direction: column;
-        align-items: flex-start;
+        text-align: center;
       }
-      .staff-profile img {
-        margin-bottom: 8px;
+
+      .menu-image,
+      .staff-image {
+        margin: 0 0 10px 0;
+      }
+
+      .time-grid {
+        grid-template-columns: repeat(2, 1fr);
       }
     }
   </style>
 </head>
-
 <body>
   <div class="container">
-    <h2>Salone Ponte 予約</h2>
-
-    <!-- ========== 1. メニュー選択画面 ========== -->
-    <div id="menuView" class="view active">
-      <h2>メニューを選択</h2>
-      <div id="menusContainer" class="menus-grid">
-        <!-- Firestore の menus コレクションから取得してカードを生成 -->
+    <!-- ヘッダー -->
+    <div class="header">
+      <h1>💇‍♀️ Salone Ponte</h1>
+      <p>ネット予約・簡単・便利</p>
+      <div class="progress">
+        <div id="progressBar" class="progress-bar" style="width: 20%"></div>
       </div>
     </div>
 
-    <!-- ========== 2. 担当者＋カレンダー選択画面 ========== -->
-    <div id="calendarView" class="view">
-      <h2>担当者と日時を選択</h2>
-
-      <!-- 選択中メニュー情報表示 -->
-      <div id="selectedMenuInfo" style="text-align:center; margin-bottom:10px;">
-        <!-- 例：<strong>カット</strong> - ¥4,000 (所要 60 分) -->
+    <!-- ステップ表示 -->
+    <div class="steps">
+      <div class="step active" id="step1">
+        <div class="step-number">1</div>
+        <div class="step-label">メニュー</div>
       </div>
-
-      <!-- スタッフ選択 -->
-      <div class="staff-select">
-        <label for="staffSelect">担当者：</label>
-        <select id="staffSelect">
-          <option value="">-- 担当者を選択 --</option>
-        </select>
+      <div class="step" id="step2">
+        <div class="step-number">2</div>
+        <div class="step-label">スタッフ</div>
       </div>
+      <div class="step" id="step3">
+        <div class="step-number">3</div>
+        <div class="step-label">日時</div>
+      </div>
+      <div class="step" id="step4">
+        <div class="step-number">4</div>
+        <div class="step-label">確認</div>
+      </div>
+    </div>
 
-      <!-- スタッフプロフィール表示 -->
-      <div id="staffProfile" class="staff-profile" style="display:none;">
-        <img id="staffPhoto" src="" alt="スタッフ写真"
-             onerror="this.src='https://dummyimage.com/60x60/cccccc/000000.png';" />
-        <div class="info">
-          <h4 id="staffName"></h4>
-          <p id="staffSpecialty"></p>
+    <!-- エラーメッセージ -->
+    <div id="errorMessage" class="error-message"></div>
+
+    <!-- 1. メニュー選択 -->
+    <div id="menuSection" class="section active">
+      <div class="section-title">メニューを選択してください</div>
+      <div id="menuLoading" class="loading">
+        <div class="spinner"></div>
+        <p>メニューを読み込み中...</p>
+      </div>
+      <div id="menuGrid" class="menu-grid" style="display: none;"></div>
+      <button id="menuNextBtn" class="btn btn-primary" style="display: none;" disabled>
+        スタッフ選択へ
+      </button>
+    </div>
+
+    <!-- 2. スタッフ選択 -->
+    <div id="staffSection" class="section">
+      <div class="section-title">担当スタッフを選択してください</div>
+      <div id="staffGrid" class="staff-grid"></div>
+      <button id="staffNextBtn" class="btn btn-primary" style="display: none;" disabled>
+        日時選択へ
+      </button>
+      <button id="staffBackBtn" class="btn btn-secondary">
+        メニュー選択に戻る
+      </button>
+    </div>
+
+    <!-- 3. 日時選択 -->
+    <div id="datetimeSection" class="section">
+      <div class="section-title">ご希望の日時を選択してください</div>
+      
+      <div class="datetime-section">
+        <div class="date-picker">
+          <h3 style="margin-bottom: 10px;">日付を選択</h3>
+          <div id="dateGrid" class="date-grid"></div>
         </div>
-      </div>
-
-      <!-- 週ナビゲーション付きカレンダー -->
-      <div class="nav">
-        <button id="prevWeekBtn">&lt; 前週</button>
-        <div id="weekLabel"></div>
-        <button id="nextWeekBtn">次週 &gt;</button>
-      </div>
-      <div class="calendar-wrapper">
-        <table>
-          <thead id="calendarHead"></thead>
-          <tbody id="calendarBody"></tbody>
-        </table>
-      </div>
-
-      <button id="toDetailBtn" class="btn-submit" style="display:none; margin-top:10px;">
-        次へ
-      </button>
-      <button id="backToMenuBtn" class="btn-submit" style="background:#6c757d; margin-top:6px;">
-        戻る
-      </button>
-    </div>
-
-    <!-- ========== 3. 詳細入力画面 ========== -->
-    <div id="detailView" class="view">
-      <h2>予約情報を入力</h2>
-
-      <!-- 既存顧客かどうか判定中メッセージ -->
-      <div id="detailLoading" style="text-align:center; margin-bottom:10px;">
-        読み込み中...
-      </div>
-
-      <form id="detailForm" style="display:none;">
-        <div id="formError" class="error-message" style="display:none;"></div>
         
-        <!-- 初回予約：名前・電話入力欄 -->
-        <div id="firstTimeFields">
-          <div class="form-group">
-            <label for="custNameInput">お名前</label>
-            <input type="text" id="custNameInput" name="custName" placeholder="例）山田 太郎" />
-          </div>
-          <div class="form-group">
-            <label for="custPhoneInput">電話番号</label>
-            <input type="tel" id="custPhoneInput" name="custPhone" placeholder="例）09012345678" />
-          </div>
+        <div class="time-picker" id="timePicker" style="display: none;">
+          <h3 style="margin-bottom: 10px;">時間を選択</h3>
+          <div id="timeGrid" class="time-grid"></div>
         </div>
+      </div>
 
-        <!-- 気になる点・メモ（全員表示） -->
+      <button id="datetimeNextBtn" class="btn btn-primary" style="display: none;" disabled>
+        予約内容確認へ
+      </button>
+      <button id="datetimeBackBtn" class="btn btn-secondary">
+        スタッフ選択に戻る
+      </button>
+    </div>
+
+    <!-- 4. 確認・顧客情報入力 -->
+    <div id="confirmSection" class="section">
+      <div class="section-title">予約内容をご確認ください</div>
+      
+      <!-- 予約サマリー -->
+      <div class="booking-summary">
+        <div class="summary-row">
+          <div class="summary-label">メニュー</div>
+          <div class="summary-value" id="summaryMenu">-</div>
+        </div>
+        <div class="summary-row">
+          <div class="summary-label">担当スタッフ</div>
+          <div class="summary-value" id="summaryStaff">-</div>
+        </div>
+        <div class="summary-row">
+          <div class="summary-label">日時</div>
+          <div class="summary-value" id="summaryDatetime">-</div>
+        </div>
+        <div class="summary-row">
+          <div class="summary-label">料金</div>
+          <div class="summary-value total-price" id="summaryPrice">¥0</div>
+        </div>
+      </div>
+
+      <!-- 顧客情報（新規のみ表示） -->
+      <div id="customerForm" style="display: none;">
+        <h3 style="margin-bottom: 20px;">お客様情報をご入力ください</h3>
         <div class="form-group">
-          <label for="custNoteInput">気になる点・メモ（任意）</label>
-          <textarea id="custNoteInput" placeholder="アレルギー等あればご記入ください"></textarea>
+          <label class="form-label">お名前 *</label>
+          <input type="text" id="customerName" class="form-input" placeholder="例）山田 太郎" required>
         </div>
+        <div class="form-group">
+          <label class="form-label">電話番号 *</label>
+          <input type="tel" id="customerPhone" class="form-input" placeholder="例）090-1234-5678" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">ご要望・備考</label>
+          <textarea id="customerNote" class="form-input form-textarea" placeholder="髪の悩みやご要望があればお聞かせください"></textarea>
+        </div>
+      </div>
 
-        <button type="submit" class="btn-submit">予約を確定</button>
-        <button type="button" id="backToCalendarBtn" class="btn-submit"
-                style="background:#6c757d; margin-top:6px;">
-          戻る
-        </button>
-      </form>
+      <!-- 既存顧客用メモ -->
+      <div id="existingCustomerNote" style="display: none;">
+        <div class="form-group">
+          <label class="form-label">今回のご要望・備考</label>
+          <textarea id="returnCustomerNote" class="form-input form-textarea" placeholder="今回の施術でのご要望があればお聞かせください"></textarea>
+        </div>
+      </div>
+
+      <button id="bookingSubmitBtn" class="btn btn-primary">
+        予約を確定する
+      </button>
+      <button id="confirmBackBtn" class="btn btn-secondary">
+        日時選択に戻る
+      </button>
     </div>
   </div>
 
-  <!-- Firestore & LIFF SDK -->
+  <!-- Firebase & LIFF SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
   <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
 
   <script>
-    // ================= Firebase 初期化 =================
+    // Firebase 初期化
     const firebaseConfig = {
-      apiKey:        "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
-      authDomain:    "salone-ponte-fceca.firebaseapp.com",
-      projectId:     "salone-ponte-fceca",
+      apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
+      authDomain: "salone-ponte-fceca.firebaseapp.com",
+      projectId: "salone-ponte-fceca",
       storageBucket: "salone-ponte-fceca.appspot.com",
       messagingSenderId: "463711728652",
-      appId:         "1:463711728652:web:59c749e11d201b26b86a29",
+      appId: "1:463711728652:web:59c749e11d201b26b86a29",
       measurementId: "G-MPWGTB6R7C"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // ================= グローバル変数 =================
-    let userId     = "", userName = "";       // LIFF で取得
-    let menusData  = [];                      // Firestore − menus コレクション
-    let staffsData = [];                      // Firestore − staffs コレクション
+    // グローバル変数
+    let selectedMenu = null;
+    let selectedStaff = null;
+    let selectedDate = null;
+    let selectedTime = null;
+    let currentStep = 1;
+    let userId = "";
+    let userName = "";
+    let isExistingCustomer = false;
 
-    let selectedMenu  = null;                 // { id, name, photoURL, price, duration }
-    let selectedStaff = null;                 // { id, name, photoURL, specialty }
-    let selDateObj    = null;                 // Date 型の予約日時
-    let offsetWeeks   = 0;                    // カレンダーの週オフセット
+    // データ
+    let menusData = [];
+    let staffsData = [];
 
-    // ================= エラーハンドリング =================
-    function showError(message) {
-      const errorDiv = document.getElementById("formError");
-      if (errorDiv) {
-        errorDiv.textContent = message;
-        errorDiv.style.display = "block";
-        setTimeout(() => {
-          errorDiv.style.display = "none";
-        }, 5000);
-      } else {
-        alert(message);
-      }
-    }
+    // 初期化
+    document.addEventListener('DOMContentLoaded', async () => {
+      await initializeLIFF();
+      await loadMenus();
+      setupEventListeners();
+    });
 
-    // ================= ビュー切り替えヘルパー =================
-    function showView(viewId) {
-      document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
-      document.getElementById(viewId).classList.add("active");
-    }
-
-    // ================= 1. メニュー選択画面 =================
-    async function loadMenus() {
-      const container = document.getElementById("menusContainer");
-      container.innerHTML = "読み込み中...";
-      try {
-        const snap = await db.collection("menus").get();
-        menusData = [];
-        snap.forEach(doc => {
-          const d = doc.data();
-          menusData.push({
-            id:       doc.id,
-            name:     d.name     || "無名メニュー",
-            photoURL: d.photoURL || "",
-            price:    d.price    || 0,
-            duration: d.duration || 60
-          });
-        });
-
-        container.innerHTML = "";
-
-        if (menusData.length === 0) {
-          container.innerHTML = "<p>まだメニューが登録されていません。</p>";
-          return;
-        }
-
-        menusData.forEach(menu => {
-          const card = document.createElement("div");
-          card.className = "menu-card";
-          card.innerHTML = `
-            <img src="${menu.photoURL}" alt="${menu.name}"
-                 onerror="this.src='https://dummyimage.com/150x100/cccccc/000000.png';" />
-            <div class="menu-info">
-              <h3>${menu.name}</h3>
-              <p>¥${menu.price.toLocaleString()}</p>
-              <p>所要 ${menu.duration} 分</p>
-              <button class="menu-select-btn" data-id="${menu.id}">選択する</button>
-            </div>
-          `;
-          container.appendChild(card);
-
-          // "選択する" ボタンが押されたとき
-          card.querySelector(".menu-select-btn").onclick = () => {
-            console.log("メニューが選択されました:", menu);
-            selectMenu(menu);
-          };
-        });
-      } catch (err) {
-        console.error("メニュー読み込みエラー:", err);
-        container.innerHTML = `<p style="color:red;">メニュー読み込みに失敗しました。</p>`;
-      }
-    }
-
-    function selectMenu(menu) {
-      selectedMenu = menu;
-      const infoDiv = document.getElementById("selectedMenuInfo");
-      infoDiv.innerHTML = `
-        <strong>${menu.name}</strong><br>
-        ¥${menu.price.toLocaleString()}（所要 ${menu.duration} 分）
-      `;
-      loadStaffsAndShowCalendar();
-    }
-
-    // ================= 2. スタッフ＋カレンダー画面 =================
-    async function loadStaffsAndShowCalendar() {
-      showView("calendarView");
-
-      // Firestore から staffs コレクションを取得
-      try {
-        const snap = await db.collection("staffs").get();
-        staffsData = [];
-        snap.forEach(doc => {
-          const d = doc.data();
-          staffsData.push({
-            id:        doc.id,
-            name:      d.name       || "スタッフ",
-            photoURL:  d.photoURL   || "",
-            specialty: d.specialty  || ""
-          });
-        });
-      } catch (err) {
-        showError("スタッフ読み込みに失敗しました: " + err.message);
-      }
-
-      // プルダウンを生成
-      const sel = document.getElementById("staffSelect");
-      sel.innerHTML = `<option value="">-- 担当者を選択 --</option>`;
-      staffsData.forEach(s => {
-        const opt = document.createElement("option");
-        opt.value       = s.id;
-        opt.textContent = s.name;
-        sel.appendChild(opt);
-      });
-      sel.onchange = () => {
-        const sid = sel.value;
-        selectedStaff = staffsData.find(x => x.id === sid) || null;
-        console.log("選択されたスタッフ:", selectedStaff);
-        renderStaffProfile();
-        offsetWeeks = 0;
-        renderCalendar();
-      };
-
-      // 「戻る」ボタン
-      document.getElementById("backToMenuBtn").onclick = () => {
-        showView("menuView");
-      };
-
-      // 週ナビボタン
-      document.getElementById("prevWeekBtn").onclick = () => {
-        offsetWeeks--;
-        renderCalendar();
-      };
-      document.getElementById("nextWeekBtn").onclick = () => {
-        offsetWeeks++;
-        renderCalendar();
-      };
-
-      // 「次へ」ボタン
-      document.getElementById("toDetailBtn").onclick = () => {
-        console.log("「次へ」ボタン押下時の selDateObj:", selDateObj);
-        if (!selDateObj) {
-          showError("日時を選択してください");
-          return;
-        }
-        loadDetailView();
-      };
-
-      // 初期状態
-      selectedStaff = null;
-      renderStaffProfile();
-      clearCalendarTable();
-    }
-
-    function renderStaffProfile() {
-      const profDiv = document.getElementById("staffProfile");
-      if (!selectedStaff) {
-        profDiv.style.display = "none";
-        return;
-      }
-      document.getElementById("staffPhoto").src        = selectedStaff.photoURL || "https://dummyimage.com/60x60/cccccc/000000.png";
-      document.getElementById("staffName").textContent  = selectedStaff.name;
-      document.getElementById("staffSpecialty").textContent = selectedStaff.specialty;
-      profDiv.style.display = "flex";
-    }
-
-    function clearCalendarTable() {
-      document.getElementById("calendarHead").innerHTML = "";
-      document.getElementById("calendarBody").innerHTML = "";
-      document.getElementById("weekLabel").textContent = "";
-      document.getElementById("toDetailBtn").style.display = "none";
-      selDateObj = null;
-    }
-
-    async function renderCalendar() {
-      const headElem = document.getElementById("calendarHead");
-      const bodyElem = document.getElementById("calendarBody");
-      headElem.innerHTML = "";
-      bodyElem.innerHTML = "";
-      document.getElementById("toDetailBtn").style.display = "none";
-      selDateObj = null;
-
-      if (!selectedStaff) {
-        clearCalendarTable();
-        return;
-      }
-
-      // 今週の開始日、終了日を作成
-      const today     = new Date();
-      const startWeek = new Date(today);
-      startWeek.setDate(today.getDate() + offsetWeeks * 7);
-      const endWeek   = new Date(startWeek);
-      endWeek.setDate(startWeek.getDate() + 6);
-
-      // ヘッダー行（時間＋日付＋曜日）
-      const hr = document.createElement("tr");
-      hr.innerHTML = "<th>時間</th>";
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(startWeek);
-        d.setDate(startWeek.getDate() + i);
-        hr.innerHTML += `<th>${formatDate(d)}</th>`;
-      }
-      headElem.appendChild(hr);
-
-      // Firestore に保存されている「今週の / このスタッフの予約」を取得
-      let reserved = [];
-      try {
-        const weekStartISO = startWeek.toISOString();
-        const weekEndISO   = new Date(endWeek.getFullYear(), endWeek.getMonth(), endWeek.getDate(), 23, 59, 59).toISOString();
-        console.log(
-          "予約取得クエリ → staffId:", selectedStaff.id,
-          ", datetime >=", weekStartISO,
-          ", <=", weekEndISO
-        );
-
-        // ※ 複合クエリには必ず orderBy("datetime") を追加しないとインデックスエラーになります
-        const snap = await db.collection("reservations")
-          .where("staffId", "==", selectedStaff.id)
-          .where("datetime", ">=", weekStartISO)
-          .where("datetime", "<=", weekEndISO)
-          .orderBy("datetime", "asc")
-          .get();
-
-        reserved = [];
-        snap.forEach(doc => {
-          const d = doc.data();
-          const st = new Date(d.datetime);
-          const en = new Date(st.getTime() + (selectedMenu.duration || 60) * 60000);
-          reserved.push({ st, en });
-        });
-        console.log("取得した予約データ数:", reserved.length);
-      } catch (err) {
-        console.error("予約取得エラー:", err);
-        // → インデックス未作成の場合はここでエラーが出続けます。
-        //    Firebase コンソールで「staffId+datetime」の複合インデックスを作成後、
-        //    再度アプリをリロードすると正常に動くようになります。
-      }
-
-      // 10:00 ～ 17:30 まで 30 分刻みでセルを生成
-      const times = [];
-      for (let h = 10; h <= 17; h++) {
-        for (let m = 0; m < 60; m += 30) {
-          times.push(`${String(h).padStart(2, "0")}:${m===0?"00":"30"}`);
-        }
-      }
-
-      times.forEach(t => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${t}</td>`;
-        for (let i = 0; i < 7; i++) {
-          const cell = document.createElement("td");
-          const d    = new Date(startWeek);
-          d.setDate(startWeek.getDate() + i);
-          const [hh, mm] = t.split(":");
-          d.setHours(+hh, +mm, 0, 0);
-
-          const end = new Date(d.getTime() + (selectedMenu.duration || 60) * 60000);
-          const overlap = reserved.some(r => d < r.en && end > r.st);
-
-          if (overlap) {
-            cell.textContent = "×";
-            cell.className = "unavailable";
-          } else {
-            cell.textContent = "◯";
-            cell.className = "available";
-            cell.onclick = () => {
-              console.log("セルクリック: 日時 =>", d.toISOString());
-              document.querySelectorAll(".selected").forEach(c => c.classList.remove("selected"));
-              cell.classList.add("selected");
-              selDateObj = new Date(d);
-              document.getElementById("toDetailBtn").style.display = "block";
-            };
-          }
-          tr.appendChild(cell);
-        }
-        bodyElem.appendChild(tr);
-      });
-
-      document.getElementById("weekLabel").textContent =
-        `${formatDate(startWeek)} - ${formatDate(endWeek)}`;
-    }
-
-    function formatDate(d) {
-      const w = ["日","月","火","水","木","金","土"][d.getDay()];
-      return `${d.getMonth()+1}/${d.getDate()}(${w})`;
-    }
-
-    // ================= 3. 詳細入力画面 =================
-    async function loadDetailView() {
-      showView("detailView");
-      document.getElementById("detailLoading").style.display = "block";
-      document.getElementById("detailForm").style.display = "none";
-
-      // LIFF 初期化とログイン
+    // LIFF初期化
+    async function initializeLIFF() {
       try {
         await liff.init({ liffId: "2007345180-oVA2L6dw" });
         if (!liff.isLoggedIn()) {
@@ -684,130 +719,501 @@
           return;
         }
         const profile = await liff.getProfile();
-        userId   = profile.userId;
+        userId = profile.userId;
         userName = profile.displayName;
-        console.log("LIFFログイン済み:", userId, userName);
-      } catch (err) {
-        showError("LINEログインエラー: " + err.message);
-        return;
+        
+        // 既存顧客チェック
+        const customerDoc = await db.collection("customers").doc(userId).get();
+        isExistingCustomer = customerDoc.exists;
+        
+      } catch (error) {
+        showError("LINEログインに失敗しました: " + error.message);
       }
-
-      // Firestore の customers/{userId} 存在チェック
-      let exists = false;
-      try {
-        const doc = await db.collection("customers").doc(userId).get();
-        if (doc.exists) exists = true;
-        console.log("顧客存在チェック:", exists);
-      } catch (err) {
-        showError("顧客チェック失敗: " + err.message);
-        return;
-      }
-
-      // DOM取得
-      const firstFields  = document.getElementById("firstTimeFields");
-      const nameInputEl  = document.getElementById("custNameInput");
-      const phoneInputEl = document.getElementById("custPhoneInput");
-
-      if (exists) {
-        // 既存顧客 → 非表示にして required を解除
-        firstFields.style.display = "none";
-        nameInputEl.removeAttribute("required");
-        phoneInputEl.removeAttribute("required");
-      } else {
-        // 新規顧客 → 表示して必須に
-        firstFields.style.display = "block";
-        nameInputEl.value = userName || ""; // LINE名を初期値に
-        nameInputEl.setAttribute("required", "required");
-        phoneInputEl.setAttribute("required", "required");
-      }
-
-      document.getElementById("detailLoading").style.display = "none";
-      document.getElementById("detailForm").style.display    = "block";
     }
 
-    document.getElementById("backToCalendarBtn").onclick = () => {
-      showView("calendarView");
-    };
+    // イベントリスナー設定
+    function setupEventListeners() {
+      // ナビゲーションボタン
+      document.getElementById('menuNextBtn').onclick = () => goToStep(2);
+      document.getElementById('staffNextBtn').onclick = () => goToStep(3);
+      document.getElementById('datetimeNextBtn').onclick = () => goToStep(4);
+      
+      document.getElementById('staffBackBtn').onclick = () => goToStep(1);
+      document.getElementById('datetimeBackBtn').onclick = () => goToStep(2);
+      document.getElementById('confirmBackBtn').onclick = () => goToStep(3);
+      
+      // 予約確定
+      document.getElementById('bookingSubmitBtn').onclick = submitBooking;
+    }
 
-    document.getElementById("detailForm").onsubmit = async (e) => {
-      e.preventDefault();
+    // ステップ移動
+    function goToStep(step) {
+      // 現在のステップを完了マークに
+      if (currentStep < step) {
+        document.getElementById(`step${currentStep}`).classList.add('completed');
+        document.getElementById(`step${currentStep}`).classList.remove('active');
+      }
+      
+      // 新しいステップをアクティブに
+      document.getElementById(`step${step}`).classList.add('active');
+      document.getElementById(`step${step}`).classList.remove('completed');
+      
+      // セクション切り替え
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      
+      if (step === 1) {
+        document.getElementById('menuSection').classList.add('active');
+        updateProgress(20);
+      } else if (step === 2) {
+        document.getElementById('staffSection').classList.add('active');
+        loadStaffs();
+        updateProgress(40);
+      } else if (step === 3) {
+        document.getElementById('datetimeSection').classList.add('active');
+        loadDatePicker();
+        updateProgress(60);
+      } else if (step === 4) {
+        document.getElementById('confirmSection').classList.add('active');
+        loadConfirmation();
+        updateProgress(80);
+      }
+      
+      currentStep = step;
+    }
 
-      const submitBtn = document.querySelector("button[type='submit']");
-      submitBtn.disabled = true;
-      submitBtn.textContent = "送信中...";
+    // プログレスバー更新
+    function updateProgress(percent) {
+      document.getElementById('progressBar').style.width = percent + '%';
+    }
 
+    // エラー表示
+    function showError(message) {
+      const errorDiv = document.getElementById('errorMessage');
+      errorDiv.textContent = message;
+      errorDiv.style.display = 'block';
+      setTimeout(() => {
+        errorDiv.style.display = 'none';
+      }, 5000);
+    }
+
+    // メニュー読み込み
+    async function loadMenus() {
       try {
-        const note = document.getElementById("custNoteInput").value.trim();
-
-        let nameVal = userName;
-        let phoneVal = "";
+        const snapshot = await db.collection("menus").get();
+        menusData = [];
+        snapshot.forEach(doc => {
+          menusData.push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
         
-        if (document.getElementById("firstTimeFields").style.display !== "none") {
-          nameVal = document.getElementById("custNameInput").value.trim();
-          phoneVal = document.getElementById("custPhoneInput").value.trim();
-          if (!nameVal || !phoneVal) {
-            throw new Error("お名前と電話番号を入力してください");
+        renderMenus();
+      } catch (error) {
+        showError("メニューの読み込みに失敗しました");
+      }
+    }
+
+    // メニュー表示
+    function renderMenus() {
+      const grid = document.getElementById('menuGrid');
+      const loading = document.getElementById('menuLoading');
+      
+      loading.style.display = 'none';
+      grid.style.display = 'block';
+      grid.innerHTML = '';
+
+      menusData.forEach(menu => {
+        const item = document.createElement('div');
+        item.className = 'menu-item';
+        item.innerHTML = `
+          <div class="menu-header">
+            <img src="${menu.photoURL || 'https://via.placeholder.com/60'}" 
+                 alt="${menu.name}" class="menu-image">
+            <div class="menu-info">
+              <h3>${menu.name}</h3>
+              <div class="menu-price">¥${menu.price.toLocaleString()}</div>
+            </div>
+          </div>
+          <div class="menu-duration">所要時間: ${menu.duration}分</div>
+          <div class="menu-description">${menu.description || ''}</div>
+        `;
+        
+        item.onclick = () => selectMenu(menu, item);
+        grid.appendChild(item);
+      });
+    }
+
+    // メニュー選択
+    function selectMenu(menu, element) {
+      document.querySelectorAll('.menu-item').forEach(item => {
+        item.classList.remove('selected');
+      });
+      element.classList.add('selected');
+      
+      selectedMenu = menu;
+      document.getElementById('menuNextBtn').style.display = 'block';
+      document.getElementById('menuNextBtn').disabled = false;
+    }
+
+    // スタッフ読み込み
+    async function loadStaffs() {
+      try {
+        const snapshot = await db.collection("staffs").get();
+        staffsData = [];
+        snapshot.forEach(doc => {
+          staffsData.push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+        
+        renderStaffs();
+      } catch (error) {
+        showError("スタッフ情報の読み込みに失敗しました");
+      }
+    }
+
+    // スタッフ表示
+    function renderStaffs() {
+      const grid = document.getElementById('staffGrid');
+      grid.innerHTML = '';
+
+      staffsData.forEach(staff => {
+        const item = document.createElement('div');
+        item.className = 'staff-item';
+        item.innerHTML = `
+          <div class="staff-header">
+            <img src="${staff.photoURL || 'https://via.placeholder.com/60'}" 
+                 alt="${staff.name}" class="staff-image">
+            <div class="staff-info">
+              <h3>${staff.name}</h3>
+              <div class="staff-role">${staff.role || 'スタイリスト'}</div>
+            </div>
+          </div>
+          <div class="staff-specialty">${staff.specialty || '丁寧なカウンセリングを心がけています'}</div>
+        `;
+        
+        item.onclick = () => selectStaff(staff, item);
+        grid.appendChild(item);
+      });
+    }
+
+    // スタッフ選択
+    function selectStaff(staff, element) {
+      document.querySelectorAll('.staff-item').forEach(item => {
+        item.classList.remove('selected');
+      });
+      element.classList.add('selected');
+      
+      selectedStaff = staff;
+      document.getElementById('staffNextBtn').style.display = 'block';
+      document.getElementById('staffNextBtn').disabled = false;
+    }
+
+    // 日付ピッカー読み込み
+    function loadDatePicker() {
+      const dateGrid = document.getElementById('dateGrid');
+      dateGrid.innerHTML = '';
+      
+      const today = new Date();
+      const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土'];
+      
+      // 今日から14日間表示
+      for (let i = 0; i < 14; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        
+        const dateItem = document.createElement('div');
+        dateItem.className = 'date-item';
+        
+        // 日曜日は休業日として無効化
+        const isDisabled = date.getDay() === 0;
+        if (isDisabled) {
+          dateItem.classList.add('disabled');
+        }
+        
+        dateItem.innerHTML = `
+          <div class="date-day">${daysOfWeek[date.getDay()]}</div>
+          <div class="date-number">${date.getDate()}</div>
+        `;
+        
+        if (!isDisabled) {
+          dateItem.onclick = () => selectDate(date, dateItem);
+        }
+        
+        dateGrid.appendChild(dateItem);
+      }
+    }
+
+    // 日付選択
+    function selectDate(date, element) {
+      document.querySelectorAll('.date-item').forEach(item => {
+        item.classList.remove('selected');
+      });
+      element.classList.add('selected');
+      
+      selectedDate = date;
+      loadTimeSlots(date);
+      document.getElementById('timePicker').style.display = 'block';
+    }
+
+    // 時間枠読み込み
+    async function loadTimeSlots(date) {
+      const timeGrid = document.getElementById('timeGrid');
+      timeGrid.innerHTML = '';
+      
+      // 営業時間: 10:00-19:00（30分刻み）
+      const timeSlots = [];
+      for (let hour = 10; hour < 19; hour++) {
+        for (let min = 0; min < 60; min += 30) {
+          timeSlots.push({
+            hour: hour,
+            minute: min,
+            display: `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`
+          });
+        }
+      }
+      
+      // 既存予約をチェック
+      const reservedSlots = await getReservedSlots(date);
+      
+      timeSlots.forEach(slot => {
+        const slotTime = new Date(date);
+        slotTime.setHours(slot.hour, slot.minute, 0, 0);
+        
+        const timeItem = document.createElement('div');
+        timeItem.className = 'time-slot';
+        timeItem.textContent = slot.display;
+        
+        // 予約済みかチェック
+        const isReserved = reservedSlots.some(reserved => {
+          const reservedTime = new Date(reserved);
+          return Math.abs(slotTime.getTime() - reservedTime.getTime()) < selectedMenu.duration * 60000;
+        });
+        
+        // 過去の時間かチェック
+        const isPast = slotTime <= new Date();
+        
+        if (isReserved || isPast) {
+          timeItem.classList.add('disabled');
+        } else {
+          timeItem.onclick = () => selectTime(slotTime, timeItem);
+        }
+        
+        timeGrid.appendChild(timeItem);
+      });
+    }
+
+    // 予約済み時間枠取得
+    async function getReservedSlots(date) {
+      try {
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+        
+        const snapshot = await db.collection("reservations")
+          .where("staffId", "==", selectedStaff.id)
+          .where("datetime", ">=", startOfDay.toISOString())
+          .where("datetime", "<=", endOfDay.toISOString())
+          .get();
+        
+        const reserved = [];
+        snapshot.forEach(doc => {
+          reserved.push(doc.data().datetime);
+        });
+        
+        return reserved;
+      } catch (error) {
+        console.error("予約確認エラー:", error);
+        return [];
+      }
+    }
+
+    // 時間選択
+    function selectTime(time, element) {
+      document.querySelectorAll('.time-slot').forEach(item => {
+        item.classList.remove('selected');
+      });
+      element.classList.add('selected');
+      
+      selectedTime = time;
+      document.getElementById('datetimeNextBtn').style.display = 'block';
+      document.getElementById('datetimeNextBtn').disabled = false;
+    }
+
+    // 確認画面読み込み
+    function loadConfirmation() {
+      // 予約サマリー更新
+      document.getElementById('summaryMenu').textContent = selectedMenu.name;
+      document.getElementById('summaryStaff').textContent = selectedStaff.name;
+      document.getElementById('summaryDatetime').textContent = 
+        selectedTime.toLocaleDateString('ja-JP', { 
+          month: 'long', 
+          day: 'numeric', 
+          weekday: 'long' 
+        }) + ' ' + 
+        selectedTime.toLocaleTimeString('ja-JP', { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        });
+      document.getElementById('summaryPrice').textContent = `¥${selectedMenu.price.toLocaleString()}`;
+      
+      // 顧客フォーム表示制御
+      if (isExistingCustomer) {
+        document.getElementById('customerForm').style.display = 'none';
+        document.getElementById('existingCustomerNote').style.display = 'block';
+      } else {
+        document.getElementById('customerForm').style.display = 'block';
+        document.getElementById('existingCustomerNote').style.display = 'none';
+        // LINE名を初期値に設定
+        document.getElementById('customerName').value = userName || '';
+      }
+    }
+
+    // 予約確定
+    async function submitBooking() {
+      const submitBtn = document.getElementById('bookingSubmitBtn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = '予約中...';
+      
+      try {
+        let customerName = userName;
+        let customerPhone = '';
+        let note = '';
+        
+        if (isExistingCustomer) {
+          note = document.getElementById('returnCustomerNote').value.trim();
+        } else {
+          customerName = document.getElementById('customerName').value.trim();
+          customerPhone = document.getElementById('customerPhone').value.trim();
+          note = document.getElementById('customerNote').value.trim();
+          
+          if (!customerName || !customerPhone) {
+            throw new Error('お名前と電話番号を入力してください');
           }
         }
-
-        const data = {
-          userId:      userId,
-          name:        nameVal,
-          phone:       phoneVal,
-          menuId:      selectedMenu.id,
-          menuName:    selectedMenu.name,
-          price:       selectedMenu.price,
-          duration:    selectedMenu.duration,
-          staffId:     selectedStaff.id,
-          staffName:   selectedStaff.name,
-          datetime:    selDateObj.toISOString(),
-          note:        note,
-          createdAt:   new Date().toISOString()
+        
+        // 予約データ作成
+        const reservationData = {
+          userId: userId,
+          name: customerName,
+          phone: customerPhone,
+          menuId: selectedMenu.id,
+          menuName: selectedMenu.name,
+          price: selectedMenu.price,
+          duration: selectedMenu.duration,
+          staffId: selectedStaff.id,
+          staffName: selectedStaff.name,
+          datetime: selectedTime.toISOString(),
+          note: note,
+          status: 'confirmed',
+          createdAt: new Date().toISOString()
         };
-
-        const resRef = await db.collection("reservations").add(data);
-
-        const custRef = db.collection("customers").doc(userId);
-        const snap    = await custRef.get();
-
-        if (snap.exists) {
-          const arr = snap.data().reservations || [];
-          arr.push({
-            menu:     selectedMenu.name,
-            datetime: selDateObj.toISOString(),
-            staff:    selectedStaff.name,
-            price:    selectedMenu.price
+        
+        // Firestoreに予約保存
+        await db.collection("reservations").add(reservationData);
+        
+        // 顧客データ更新
+        const customerRef = db.collection("customers").doc(userId);
+        const customerDoc = await customerRef.get();
+        
+        if (customerDoc.exists) {
+          // 既存顧客：来店履歴に追加
+          const customerData = customerDoc.data();
+          const reservations = customerData.reservations || [];
+          reservations.push({
+            menu: selectedMenu.name,
+            datetime: selectedTime.toISOString(),
+            staff: selectedStaff.name,
+            price: selectedMenu.price
           });
-          await custRef.update({ reservations: arr });
+          await customerRef.update({ reservations: reservations });
         } else {
-          await custRef.set({
+          // 新規顧客：顧客データ作成
+          await customerRef.set({
             userId: userId,
-            name: nameVal,
-            phone: phoneVal,
+            name: customerName,
+            phone: customerPhone,
+            createdAt: new Date().toISOString(),
             reservations: [{
-              menu:     selectedMenu.name,
-              datetime: selDateObj.toISOString(),
-              staff:    selectedStaff.name,
-              price:    selectedMenu.price
-            }]
+              menu: selectedMenu.name,
+              datetime: selectedTime.toISOString(),
+              staff: selectedStaff.name,
+              price: selectedMenu.price
+            }],
+            tags: ['新規顧客'], // タグ機能
+            totalVisits: 1,
+            totalSpent: selectedMenu.price
           });
         }
-
-        alert("予約が確定しました！");
-        window.location.href = 'confirm.html';
-      } catch (err) {
-        console.error("Firestore 書き込みエラー:", err);
-        showError("予約登録に失敗しました: " + err.message);
+        
+        // 予約完了画面に遷移
+        showBookingSuccess();
+        
+      } catch (error) {
+        console.error('予約エラー:', error);
+        showError('予約の確定に失敗しました: ' + error.message);
         submitBtn.disabled = false;
-        submitBtn.textContent = "予約を確定";
+        submitBtn.textContent = '予約を確定する';
       }
-    };
+    }
 
-    // ================= 初回ロード =================
-    window.onload = () => {
-      showView("menuView");
-      loadMenus();
-    };
+    // 予約成功画面表示
+    function showBookingSuccess() {
+      document.querySelector('.container').innerHTML = `
+        <div class="header">
+          <h1>💇‍♀️ Salone Ponte</h1>
+          <p>ご予約ありがとうございます</p>
+        </div>
+        <div style="padding: 40px 20px; text-align: center;">
+          <div style="font-size: 64px; margin-bottom: 20px;">✅</div>
+          <h2 style="color: #ff5722; margin-bottom: 20px;">予約が確定しました！</h2>
+          
+          <div class="booking-summary" style="margin: 30px 0;">
+            <div class="summary-row">
+              <div class="summary-label">メニュー</div>
+              <div class="summary-value">${selectedMenu.name}</div>
+            </div>
+            <div class="summary-row">
+              <div class="summary-label">担当スタッフ</div>
+              <div class="summary-value">${selectedStaff.name}</div>
+            </div>
+            <div class="summary-row">
+              <div class="summary-label">日時</div>
+              <div class="summary-value">${selectedTime.toLocaleDateString('ja-JP', { 
+                month: 'long', 
+                day: 'numeric', 
+                weekday: 'long' 
+              })} ${selectedTime.toLocaleTimeString('ja-JP', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              })}</div>
+            </div>
+            <div class="summary-row">
+              <div class="summary-label">料金</div>
+              <div class="summary-value total-price">¥${selectedMenu.price.toLocaleString()}</div>
+            </div>
+          </div>
+          
+          <p style="color: #666; margin-bottom: 30px;">
+            確認のLINEメッセージをお送りしました。<br>
+            ご来店をお待ちしております！
+          </p>
+          
+          <button onclick="window.location.href='index.html'" class="btn btn-primary">
+            新しい予約をする
+          </button>
+          
+          <button onclick="window.location.href='dashboard.html'" class="btn btn-secondary">
+            マイページを見る
+          </button>
+        </div>
+      `;
+      
+      updateProgress(100);
+    }
   </script>
 </body>
 </html>
