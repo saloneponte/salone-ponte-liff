@@ -951,3 +951,368 @@
               <h3>${staff.name}</h3>
               <div class="staff-role">${staff.role || 'スタイリスト'}</div>
             </div>
+            </div>
+        `;
+        
+        item.onclick = () => selectStaff(staff, item);
+        grid.appendChild(item);
+      });
+    }
+
+    // スタッフ選択（この関数も追加が必要）
+    function selectStaff(staff, element) {
+      document.querySelectorAll('.staff-item').forEach(item => {
+        item.classList.remove('selected');
+      });
+      element.classList.add('selected');
+      
+      selectedStaff = staff;
+      document.getElementById('staffNextBtn').style.display = 'block';
+      document.getElementById('staffNextBtn').disabled = false;
+    }
+
+    // カレンダー表示
+    function renderCalendar() {
+      const grid = document.getElementById('calendarGrid');
+      // 曜日ヘッダーを保持
+      const headers = grid.querySelectorAll('.date-header');
+      grid.innerHTML = '';
+      headers.forEach(header => grid.appendChild(header));
+
+      const year = currentDisplayMonth.getFullYear();
+      const month = currentDisplayMonth.getMonth();
+      
+      // 月表示更新
+      document.getElementById('currentMonth').textContent = 
+        `${year}年${month + 1}月`;
+
+      // カレンダー生成
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const startDate = new Date(firstDay);
+      startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      for (let i = 0; i < 42; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        
+        const dateItem = document.createElement('div');
+        dateItem.className = 'date-item';
+        dateItem.textContent = date.getDate();
+        
+        if (date.getMonth() !== month) {
+          dateItem.classList.add('other-month');
+        }
+        if (date < today) {
+          dateItem.classList.add('disabled');
+        }
+        if (date.getTime() === today.getTime()) {
+          dateItem.classList.add('today');
+        }
+        if (selectedDate && date.getTime() === selectedDate.getTime()) {
+          dateItem.classList.add('selected');
+        }
+        
+        if (!dateItem.classList.contains('disabled') && !dateItem.classList.contains('other-month')) {
+          dateItem.onclick = () => selectDate(date, dateItem);
+        }
+        
+        grid.appendChild(dateItem);
+      }
+    }
+
+    // 日付選択
+    function selectDate(date, element) {
+      document.querySelectorAll('.date-item').forEach(item => {
+        item.classList.remove('selected');
+      });
+      element.classList.add('selected');
+      
+      selectedDate = date;
+      loadTimeSlots();
+    }
+
+    // 時間枠読み込み
+    async function loadTimeSlots() {
+      const timePicker = document.getElementById('timePicker');
+      const timeGrid = document.getElementById('timeGrid');
+      
+      timePicker.style.display = 'block';
+      timeGrid.innerHTML = '';
+
+      // 営業時間（10:00-19:00）
+      const businessHours = [
+        '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+        '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
+        '16:00', '16:30', '17:00', '17:30', '18:00', '18:30'
+      ];
+
+      // 予約済み時間取得
+      const reservedSlots = await getReservedSlots(selectedDate);
+
+      businessHours.forEach(timeStr => {
+        const timeItem = document.createElement('div');
+        timeItem.className = 'time-slot';
+        timeItem.textContent = timeStr;
+        
+        const slotTime = new Date(selectedDate);
+        const [hours, minutes] = timeStr.split(':');
+        slotTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        
+        if (reservedSlots.includes(slotTime.toISOString()) || slotTime <= new Date()) {
+          timeItem.classList.add('disabled');
+        } else {
+          timeItem.onclick = () => selectTime(slotTime, timeItem);
+        }
+        
+        timeGrid.appendChild(timeItem);
+      });
+    }
+
+    // 予約済み時間枠取得
+    async function getReservedSlots(date) {
+      try {
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+        
+        const snapshot = await db.collection("reservations")
+          .where("staffId", "==", selectedStaff.id)
+          .where("datetime", ">=", startOfDay.toISOString())
+          .where("datetime", "<=", endOfDay.toISOString())
+          .get();
+        
+        const reserved = [];
+        snapshot.forEach(doc => {
+          reserved.push(doc.data().datetime);
+        });
+        
+        return reserved;
+      } catch (error) {
+        console.error("予約確認エラー:", error);
+        return [];
+      }
+    }
+
+    // 時間選択
+    function selectTime(time, element) {
+      document.querySelectorAll('.time-slot').forEach(item => {
+        item.classList.remove('selected');
+      });
+      element.classList.add('selected');
+      
+      selectedTime = time;
+      document.getElementById('datetimeNextBtn').style.display = 'block';
+      document.getElementById('datetimeNextBtn').disabled = false;
+    }
+
+    // 確認画面読み込み
+    function loadConfirmation() {
+      // 予約サマリー更新
+      document.getElementById('summaryMenu').textContent = selectedMenu.name;
+      document.getElementById('summaryStaff').textContent = selectedStaff.name;
+      document.getElementById('summaryDatetime').textContent = 
+        selectedTime.toLocaleDateString('ja-JP', { 
+          month: 'long', 
+          day: 'numeric', 
+          weekday: 'long' 
+        }) + ' ' + 
+        selectedTime.toLocaleTimeString('ja-JP', { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        });
+      document.getElementById('summaryPrice').textContent = `¥${selectedMenu.price.toLocaleString()}`;
+      
+      // 顧客フォーム表示制御
+      if (isExistingCustomer) {
+        document.getElementById('customerForm').style.display = 'none';
+        document.getElementById('existingCustomerNote').style.display = 'block';
+      } else {
+        document.getElementById('customerForm').style.display = 'block';
+        document.getElementById('existingCustomerNote').style.display = 'none';
+        // LINE名を初期値に設定
+        document.getElementById('customerName').value = userName || '';
+      }
+    }
+
+    // 予約確定処理（ここが重要な追加部分！）
+    async function submitBooking() {
+      try {
+        // 入力値検証
+        if (!selectedMenu || !selectedStaff || !selectedTime) {
+          showError('予約情報が不完全です。最初からやり直してください。');
+          return;
+        }
+
+        // 顧客情報取得
+        let customerName, customerPhone, customerNote;
+        
+        if (isExistingCustomer) {
+          // 既存顧客の場合
+          const customerDoc = await db.collection("customers").doc(userId).get();
+          const customerData = customerDoc.data();
+          customerName = customerData.name || userName;
+          customerPhone = customerData.phone || '';
+          customerNote = document.getElementById('returnCustomerNote').value.trim();
+        } else {
+          // 新規顧客の場合
+          customerName = document.getElementById('customerName').value.trim();
+          customerPhone = document.getElementById('customerPhone').value.trim();
+          customerNote = document.getElementById('customerNote').value.trim();
+          
+          if (!customerName || !customerPhone) {
+            showError('お名前と電話番号は必須です。');
+            return;
+          }
+        }
+
+        // Firebase に予約データ保存
+        const reservationData = {
+          customerId: userId,
+          name: customerName,
+          phone: customerPhone,
+          menuId: selectedMenu.id,
+          menuName: selectedMenu.name,
+          menuPrice: selectedMenu.price,
+          menuDuration: selectedMenu.duration,
+          staffId: selectedStaff.id,
+          staffName: selectedStaff.name,
+          datetime: selectedTime.toISOString(),
+          note: customerNote,
+          status: 'confirmed',
+          createdAt: new Date().toISOString(),
+          lineUserId: userId
+        };
+
+        // Firestore に保存
+        const docRef = await db.collection('reservations').add(reservationData);
+        
+        // 顧客データ更新 or 新規作成
+        if (isExistingCustomer) {
+          // 既存顧客の予約履歴に追加
+          const customerRef = db.collection('customers').doc(userId);
+          const customerDoc = await customerRef.get();
+          
+          if (customerDoc.exists) {
+            const customerData = customerDoc.data();
+            const reservations = customerData.reservations || [];
+            reservations.push({
+              id: docRef.id,
+              datetime: selectedTime.toISOString(),
+              menu: selectedMenu.name,
+              staff: selectedStaff.name,
+              price: selectedMenu.price,
+              note: customerNote
+            });
+            
+            await customerRef.update({
+              reservations: reservations,
+              lastReservation: selectedTime.toISOString(),
+              updatedAt: new Date().toISOString()
+            });
+          }
+        } else {
+          // 新規顧客データ作成
+          const customerData = {
+            name: customerName,
+            phone: customerPhone,
+            lineUserId: userId,
+            reservations: [{
+              id: docRef.id,
+              datetime: selectedTime.toISOString(),
+              menu: selectedMenu.name,
+              staff: selectedStaff.name,
+              price: selectedMenu.price,
+              note: customerNote
+            }],
+            createdAt: new Date().toISOString(),
+            lastReservation: selectedTime.toISOString()
+          };
+          
+          await db.collection('customers').doc(userId).set(customerData);
+        }
+
+        // 管理システムへの自動連携（重要！）
+        const managementData = {
+          id: docRef.id,
+          customerId: userId,
+          name: customerName,
+          phone: customerPhone,
+          menuId: selectedMenu.id,
+          menuName: selectedMenu.name,
+          staffId: selectedStaff.id,
+          staffName: selectedStaff.name,
+          datetime: selectedTime.toISOString(),
+          price: selectedMenu.price,
+          duration: selectedMenu.duration,
+          note: customerNote
+        };
+
+        // 管理システムに連携
+        try {
+          if (window.opener && window.opener.salonSystem) {
+            window.opener.salonSystem.processNewReservation(managementData);
+          } else if (window.parent && window.parent.salonSystem) {
+            window.parent.salonSystem.processNewReservation(managementData);
+          } else {
+            // LocalStorageに一時保存（後で管理システムが読み取り）
+            const pendingReservations = JSON.parse(localStorage.getItem('pendingReservations') || '[]');
+            pendingReservations.push(managementData);
+            localStorage.setItem('pendingReservations', JSON.stringify(pendingReservations));
+          }
+        } catch (error) {
+          console.log('管理システムへの連携に失敗:', error);
+        }
+
+        // 成功処理
+        updateProgress(100);
+        showSuccess('予約が完了しました！');
+        
+        // LIFF終了
+        setTimeout(() => {
+          if (liff.isLoggedIn()) {
+            liff.closeWindow();
+          }
+        }, 2000);
+
+      } catch (error) {
+        console.error('予約エラー:', error);
+        showError('予約の保存に失敗しました。もう一度お試しください。');
+      }
+    }
+
+    // 成功メッセージ表示
+    function showSuccess(message) {
+      const successDiv = document.createElement('div');
+      successDiv.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #10B981;
+        color: white;
+        padding: 20px 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        z-index: 1000;
+        font-size: 16px;
+        font-weight: bold;
+      `;
+      successDiv.textContent = message;
+      document.body.appendChild(successDiv);
+      
+      setTimeout(() => {
+        if (successDiv.parentNode) {
+          successDiv.parentNode.removeChild(successDiv);
+        }
+      }, 3000);
+    }
+
+  </script>
+</body>
+</html>
+            

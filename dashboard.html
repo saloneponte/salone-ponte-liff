@@ -2,928 +2,1077 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>Salone Ponte 管理ダッシュボード</title>
+  <title>Salone Ponte 統合管理システム</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
   <style>
     .tab-active {
       @apply bg-blue-500 text-white border-blue-500;
     }
-    .card {
-      @apply bg-white rounded-lg shadow-md p-6 border border-gray-200;
+    
+    .tag {
+      @apply inline-block px-2 py-1 text-xs rounded-full;
     }
-    .metric-card {
-      @apply bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200;
+    .tag-vip { @apply bg-purple-100 text-purple-800; }
+    .tag-regular { @apply bg-green-100 text-green-800; }
+    .tag-new { @apply bg-blue-100 text-blue-800; }
+    .tag-risk { @apply bg-red-100 text-red-800; }
+    .tag-custom { @apply bg-gray-100 text-gray-800; }
+    
+    .modal {
+      @apply fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50;
     }
-    .metric-value {
-      @apply text-2xl font-bold text-blue-600;
+    
+    .modal.active {
+      @apply flex;
     }
-    .metric-label {
-      @apply text-sm text-gray-600 mt-1;
+
+    .side-nav {
+      @apply fixed left-0 top-0 h-full w-64 bg-gray-900 text-white transform -translate-x-full transition-transform duration-300 z-40;
     }
-    .chart-container {
-      @apply bg-white p-4 rounded-lg shadow-md;
-      height: 400px;
+
+    .side-nav.active {
+      @apply translate-x-0;
+    }
+
+    .main-content {
+      @apply transition-all duration-300;
+    }
+
+    .main-content.shifted {
+      @apply ml-64;
+    }
+
+    .menu-overlay {
+      @apply fixed inset-0 bg-black bg-opacity-50 hidden z-30;
+    }
+
+    .menu-overlay.active {
+      @apply block;
+    }
+
+    @media (max-width: 768px) {
+      .main-content.shifted {
+        @apply ml-0;
+      }
+    }
+
+    .message-thread {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .message-item {
+      @apply mb-3 p-3 rounded-lg;
+    }
+
+    .message-sent {
+      @apply bg-blue-100 ml-8;
+    }
+
+    .message-received {
+      @apply bg-gray-100 mr-8;
+    }
+
+    .online-indicator {
+      @apply w-3 h-3 bg-green-400 rounded-full absolute -top-1 -right-1;
+    }
+
+    .chat-list-item {
+      @apply p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors;
+    }
+
+    .chat-list-item.active {
+      @apply bg-blue-50 border-blue-200;
+    }
+
+    .unread-badge {
+      @apply bg-red-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center;
     }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
-  <div class="container mx-auto px-4 py-6 max-w-7xl">
-    <!-- ヘッダー -->
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-800 mb-2">Salone Ponte 管理ダッシュボード</h1>
-      <p class="text-gray-600">売上分析・顧客管理・予約管理</p>
+  <!-- サイドナビゲーション -->
+  <nav id="sideNav" class="side-nav">
+    <div class="p-6">
+      <h2 class="text-xl font-bold mb-6">💇‍♀️ Salone Ponte</h2>
+      <ul class="space-y-2">
+        <li>
+          <button onclick="switchTab('dashboard')" class="nav-item w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition-colors">
+            📊 ダッシュボード
+          </button>
+        </li>
+        <li>
+          <button onclick="switchTab('customers')" class="nav-item w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition-colors">
+            👥 顧客管理
+          </button>
+        </li>
+        <li>
+          <button onclick="switchTab('reservations')" class="nav-item w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition-colors">
+            📅 予約管理
+          </button>
+        </li>
+        <li>
+          <button onclick="switchTab('menu-staff')" class="nav-item w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition-colors">
+            ⚙️ メニュー・スタッフ
+          </button>
+        </li>
+        <li>
+          <button onclick="switchTab('counseling')" class="nav-item w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition-colors">
+            📋 カウンセリング
+          </button>
+        </li>
+        <li>
+          <button onclick="switchTab('messaging')" class="nav-item w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition-colors relative">
+            💬 メッセージ配信
+            <span id="messageNotification" class="unread-badge hidden absolute top-1 right-1">0</span>
+          </button>
+        </li>
+        <li>
+          <button onclick="switchTab('analytics')" class="nav-item w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition-colors">
+            📈 売上分析
+          </button>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- メニューオーバーレイ（モバイル用） -->
+  <div id="menuOverlay" class="menu-overlay" onclick="closeSideNav()"></div>
+
+  <!-- メインコンテンツ -->
+  <div id="mainContent" class="main-content">
+    <!-- トップバー -->
+    <div class="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
+      <div class="flex justify-between items-center">
+        <div class="flex items-center">
+          <button id="menuToggle" class="md:hidden mr-4 p-2" onclick="toggleSideNav()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+          </button>
+          <h1 id="pageTitle" class="text-2xl font-bold text-gray-800">ダッシュボード</h1>
+        </div>
+        <div class="flex items-center space-x-4">
+          <button onclick="openBookingPage()" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors">
+            📅 予約画面を開く
+          </button>
+          <div class="flex items-center space-x-2">
+            <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+              <span class="text-white text-sm font-medium">管</span>
+            </div>
+            <span class="text-sm font-medium">管理者</span>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- メトリクスカード -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      <div class="card metric-card">
-        <div class="metric-value" id="todayRevenue">¥0</div>
-        <div class="metric-label">今日の売上</div>
-      </div>
-      <div class="card metric-card">
-        <div class="metric-value" id="monthlyRevenue">¥0</div>
-        <div class="metric-label">今月の売上</div>
-      </div>
-      <div class="card metric-card">
-        <div class="metric-value" id="todayReservations">0</div>
-        <div class="metric-label">今日の予約数</div>
-      </div>
-      <div class="card metric-card">
-        <div class="metric-value" id="totalCustomers">0</div>
-        <div class="metric-label">総顧客数</div>
-      </div>
-    </div>
-
-    <!-- タブナビゲーション -->
-    <div class="flex flex-wrap border-b border-gray-200 mb-6">
-      <button class="tab-button px-6 py-3 font-medium border-b-2 border-transparent hover:border-gray-300 transition-colors" data-tab="analytics">売上分析</button>
-      <button class="tab-button px-6 py-3 font-medium border-b-2 border-transparent hover:border-gray-300 transition-colors" data-tab="reservations">予約管理</button>
-      <button class="tab-button px-6 py-3 font-medium border-b-2 border-transparent hover:border-gray-300 transition-colors" data-tab="customers">顧客管理</button>
-      <button class="tab-button px-6 py-3 font-medium border-b-2 border-transparent hover:border-gray-300 transition-colors" data-tab="staff">スタッフ管理</button>
-    </div>
-
-    <!-- 売上分析タブ -->
-    <div id="analytics-tab" class="tab-content">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <!-- 売上推移グラフ -->
-        <div class="chart-container">
-          <h3 class="text-lg font-semibold mb-4">売上推移（過去30日）</h3>
-          <canvas id="revenueChart"></canvas>
+    <!-- コンテンツエリア -->
+    <div class="p-6">
+      <!-- ダッシュボードタブ -->
+      <div id="dashboardTab" class="tab-content">
+        <!-- 統計サマリー -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center">
+              <div class="p-3 rounded-full bg-blue-100 text-blue-600">👥</div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">総顧客数</p>
+                <p class="text-2xl font-semibold text-gray-900" id="totalCustomers">0</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center">
+              <div class="p-3 rounded-full bg-green-100 text-green-600">📅</div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">今月予約</p>
+                <p class="text-2xl font-semibold text-gray-900" id="monthlyReservations">0</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center">
+              <div class="p-3 rounded-full bg-purple-100 text-purple-600">💰</div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">今月売上</p>
+                <p class="text-2xl font-semibold text-gray-900" id="monthlyRevenue">¥0</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center">
+              <div class="p-3 rounded-full bg-red-100 text-red-600">⚠️</div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">要フォロー</p>
+                <p class="text-2xl font-semibold text-gray-900" id="needFollowUp">0</p>
+              </div>
+            </div>
+          </div>
         </div>
-        
-        <!-- メニュー別売上 -->
-        <div class="chart-container">
-          <h3 class="text-lg font-semibold mb-4">メニュー別売上</h3>
-          <canvas id="menuChart"></canvas>
+
+        <!-- 最近の予約 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h3 class="text-lg font-semibold mb-4">最近の予約</h3>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">日時</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">顧客</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">メニュー</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">スタッフ</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">金額</th>
+                </tr>
+              </thead>
+              <tbody id="recentReservations" class="bg-white divide-y divide-gray-200">
+                <!-- データは JavaScript で動的に生成 -->
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- スタッフ別売上 -->
-        <div class="chart-container">
-          <h3 class="text-lg font-semibold mb-4">スタッフ別売上</h3>
-          <canvas id="staffChart"></canvas>
+      <!-- 顧客管理タブ -->
+      <div id="customersTab" class="tab-content hidden">
+        <!-- 検索・フィルター -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">顧客検索</label>
+              <input type="text" id="customerSearch" placeholder="名前・電話番号で検索" 
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">タグ絞り込み</label>
+              <select id="customerTagFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">全て</option>
+                <option value="VIP顧客">VIP顧客</option>
+                <option value="常連顧客">常連顧客</option>
+                <option value="新規顧客">新規顧客</option>
+                <option value="離反リスク">離反リスク</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">来店期間</label>
+              <select id="customerVisitFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">全期間</option>
+                <option value="30">30日以内</option>
+                <option value="60">60日以内</option>
+                <option value="90">90日以内</option>
+                <option value="180">180日以上</option>
+              </select>
+            </div>
+            <div class="flex items-end space-x-2">
+              <button onclick="applyCustomerFilters()" class="flex-1 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors">
+                検索
+              </button>
+              <button onclick="resetCustomerFilters()" class="flex-1 bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">
+                リセット
+              </button>
+            </div>
+          </div>
         </div>
-        
-        <!-- 時間帯別予約数 -->
-        <div class="chart-container">
-          <h3 class="text-lg font-semibold mb-4">時間帯別予約数</h3>
-          <canvas id="timeChart"></canvas>
+
+        <!-- 顧客一覧 -->
+        <div class="bg-white rounded-lg shadow-md">
+          <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900">顧客一覧</h3>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">顧客情報</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">タグ</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">来店情報</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">累計金額</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最終来店</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                </tr>
+              </thead>
+              <tbody id="customersTable" class="bg-white divide-y divide-gray-200">
+                <!-- 顧客データは JavaScript で動的に生成 -->
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- 予約管理タブ -->
-    <div id="reservations-tab" class="tab-content hidden">
-      <div class="card">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-          <h3 class="text-lg font-semibold mb-4 sm:mb-0">予約一覧</h3>
-          <div class="flex flex-col sm:flex-row gap-2">
-            <input type="date" id="reservationDateFilter" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <select id="reservationStatusFilter" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <!-- 予約管理タブ -->
+      <div id="reservationsTab" class="tab-content hidden">
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h3 class="text-lg font-semibold mb-4">予約管理</h3>
+          
+          <!-- 予約フィルター -->
+          <div class="flex flex-wrap gap-4 mb-6">
+            <select id="reservationDateFilter" class="px-3 py-2 border border-gray-300 rounded-md">
+              <option value="today">今日</option>
+              <option value="tomorrow">明日</option>
+              <option value="week">今週</option>
+              <option value="month">今月</option>
+            </select>
+            <select id="reservationStaffFilter" class="px-3 py-2 border border-gray-300 rounded-md">
+              <option value="">全スタッフ</option>
+            </select>
+            <select id="reservationStatusFilter" class="px-3 py-2 border border-gray-300 rounded-md">
               <option value="">全ステータス</option>
               <option value="confirmed">確定</option>
-              <option value="cancelled">キャンセル</option>
               <option value="completed">完了</option>
+              <option value="cancelled">キャンセル</option>
             </select>
-            <button id="refreshReservations" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">更新</button>
+            <button onclick="applyReservationFilters()" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
+              フィルター適用
+            </button>
           </div>
-        </div>
-        
-        <div class="overflow-x-auto">
-          <table class="min-w-full table-auto">
-            <thead>
-              <tr class="bg-gray-50">
-                <th class="px-4 py-2 text-left text-sm font-medium text-gray-500">日時</th>
-                <th class="px-4 py-2 text-left text-sm font-medium text-gray-500">顧客名</th>
-                <th class="px-4 py-2 text-left text-sm font-medium text-gray-500">メニュー</th>
-                <th class="px-4 py-2 text-left text-sm font-medium text-gray-500">スタッフ</th>
-                <th class="px-4 py-2 text-left text-sm font-medium text-gray-500">金額</th>
-                <th class="px-4 py-2 text-left text-sm font-medium text-gray-500">ステータス</th>
-                <th class="px-4 py-2 text-left text-sm font-medium text-gray-500">操作</th>
-              </tr>
-            </thead>
-            <tbody id="reservationsTableBody">
-              <!-- データは JavaScript で動的に挿入 -->
-            </tbody>
-          </table>
+          
+          <!-- 予約一覧 -->
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">日時</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">顧客</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">メニュー</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">スタッフ</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">金額</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ステータス</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+                </tr>
+              </thead>
+              <tbody id="reservationsTable" class="bg-white divide-y divide-gray-200">
+                <!-- 予約データは JavaScript で動的に生成 -->
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- 顧客管理タブ -->
-    <div id="customers-tab" class="tab-content hidden">
-      <div class="card">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-          <h3 class="text-lg font-semibold mb-4 sm:mb-0">顧客一覧</h3>
-          <div class="flex flex-col sm:flex-row gap-2">
-            <input type="text" id="customerSearchInput" placeholder="顧客名で検索" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <select id="customerSegmentFilter" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="">全セグメント</option>
-              <option value="vip">VIP顧客</option>
-              <option value="regular">常連顧客</option>
-              <option value="new">新規顧客</option>
-              <option value="inactive">休眠顧客</option>
-            </select>
-            <button id="refreshCustomers" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">更新</button>
+      <!-- メニュー・スタッフ管理タブ -->
+      <div id="menuStaffTab" class="tab-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- メニュー管理 -->
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-semibold">🍽️ メニュー管理</h3>
+              <button onclick="openMenuModal()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                + 新規メニュー
+              </button>
+            </div>
+            <div id="menuList" class="space-y-4">
+              <!-- メニューリストは JavaScript で生成 -->
+            </div>
+          </div>
+
+          <!-- スタッフ管理 -->
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-semibold">👩‍💼 スタッフ管理</h3>
+              <button onclick="openStaffModal()" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors">
+                + 新規スタッフ
+              </button>
+            </div>
+            <div id="staffList" class="space-y-4">
+              <!-- スタッフリストは JavaScript で生成 -->
+            </div>
           </div>
         </div>
-        
-        <div class="overflow-x-auto">
-          <table class="min-w-full table-auto">
-            <thead>
-              <tr class="bg-gray-50">
-                <th class="px-4 py-2 text-left text-sm font-medium text-gray-500">顧客名</th>
-                <th class="px-4 py-2 text-left text-sm font-medium text-gray-500">電話番号</th>
-                <th class="px-4 py-2 text-left text-sm font-medium text-gray-500">来店回数</th>
-                <th class="px-4 py-2 text-left text-sm font-medium text-gray-500">最終来店</th>
-                <th class="px-4 py-2 text-left text-sm font-medium text-gray-500">累計金額</th>
-                <th class="px-4 py-2 text-left text-sm font-medium text-gray-500">セグメント</th>
-                <th class="px-4 py-2 text-left text-sm font-medium text-gray-500">操作</th>
-              </tr>
-            </thead>
-            <tbody id="customersTableBody">
-              <!-- データは JavaScript で動的に挿入 -->
-            </tbody>
-          </table>
+
+        <!-- 営業設定 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mt-6">
+          <h3 class="text-lg font-semibold mb-4">🕐 営業時間・休業日設定</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h4 class="font-medium mb-3">営業時間</h4>
+              <div class="space-y-3">
+                <div class="flex items-center space-x-4">
+                  <span class="w-16 text-sm">平日:</span>
+                  <input type="time" id="weekdayOpen" value="10:00" class="px-3 py-2 border border-gray-300 rounded-md">
+                  <span>〜</span>
+                  <input type="time" id="weekdayClose" value="19:00" class="px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+                <div class="flex items-center space-x-4">
+                  <span class="w-16 text-sm">土日:</span>
+                  <input type="time" id="weekendOpen" value="10:00" class="px-3 py-2 border border-gray-300 rounded-md">
+                  <span>〜</span>
+                  <input type="time" id="weekendClose" value="18:00" class="px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+              </div>
+            </div>
+            <div>
+              <h4 class="font-medium mb-3">定休日</h4>
+              <div class="grid grid-cols-2 gap-2">
+                <label class="flex items-center space-x-2">
+                  <input type="checkbox" id="closedSunday" checked class="rounded">
+                  <span class="text-sm">日曜日</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                  <input type="checkbox" id="closedMonday" class="rounded">
+                  <span class="text-sm">月曜日</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                  <input type="checkbox" id="closedTuesday" class="rounded">
+                  <span class="text-sm">火曜日</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                  <input type="checkbox" id="closedWednesday" class="rounded">
+                  <span class="text-sm">水曜日</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                  <input type="checkbox" id="closedThursday" class="rounded">
+                  <span class="text-sm">木曜日</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                  <input type="checkbox" id="closedFriday" class="rounded">
+                  <span class="text-sm">金曜日</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                  <input type="checkbox" id="closedSaturday" class="rounded">
+                  <span class="text-sm">土曜日</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <button onclick="saveBusinessSettings()" class="mt-4 bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+            営業設定を保存
+          </button>
         </div>
       </div>
-    </div>
 
-    <!-- スタッフ管理タブ -->
-    <div id="staff-tab" class="tab-content hidden">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="card">
-          <h3 class="text-lg font-semibold mb-4">スタッフ一覧</h3>
-          <div id="staffList">
-            <!-- スタッフカードは JavaScript で動的に挿入 -->
+      <!-- カウンセリングタブ -->
+      <div id="counselingTab" class="tab-content hidden">
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h3 class="text-lg font-semibold mb-4">📋 カウンセリングシート管理</h3>
+          
+          <!-- カウンセリングシート一覧 -->
+          <div class="mb-6">
+            <div class="flex justify-between items-center mb-4">
+              <h4 class="font-medium">未実施カウンセリング</h4>
+              <button onclick="createCounselingTemplate()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                + テンプレート作成
+              </button>
+            </div>
+            <div id="pendingCounseling" class="space-y-4">
+              <!-- 未実施カウンセリングリスト -->
+            </div>
+          </div>
+
+          <!-- 完了済みカウンセリング -->
+          <div>
+            <h4 class="font-medium mb-4">完了済みカウンセリング</h4>
+            <div id="completedCounseling" class="space-y-4">
+              <!-- 完了済みカウンセリングリスト -->
+            </div>
           </div>
         </div>
-        
-        <div class="card">
-          <h3 class="text-lg font-semibold mb-4">スタッフパフォーマンス</h3>
-          <canvas id="staffPerformanceChart"></canvas>
+      </div>
+
+      <!-- メッセージ配信タブ -->
+      <div id="messagingTab" class="tab-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- 顧客リスト -->
+          <div class="bg-white rounded-lg shadow-md">
+            <div class="p-4 border-b border-gray-200">
+              <h3 class="text-lg font-semibold">顧客リスト</h3>
+              <div class="mt-2">
+                <input type="text" id="chatSearch" placeholder="顧客検索..." 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+              </div>
+            </div>
+            <div id="chatList" class="max-h-96 overflow-y-auto">
+              <!-- 顧客チャットリスト -->
+            </div>
+          </div>
+
+          <!-- チャット画面 -->
+          <div class="lg:col-span-2 bg-white rounded-lg shadow-md flex flex-col">
+            <div id="chatHeader" class="p-4 border-b border-gray-200 bg-gray-50">
+              <div class="flex items-center">
+                <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium mr-3">
+                  顧
+                </div>
+                <div>
+                  <h4 class="font-medium">顧客を選択してください</h4>
+                  <p class="text-sm text-gray-500">左の一覧から顧客を選択してメッセージを開始</p>
+                </div>
+              </div>
+            </div>
+            
+            <div id="chatMessages" class="flex-1 p-4 message-thread">
+              <div class="text-center text-gray-500">
+                顧客を選択してください
+              </div>
+            </div>
+            
+            <div id="chatInput" class="p-4 border-t border-gray-200" style="display: none;">
+              <div class="flex space-x-2">
+                <input type="text" id="messageInput" placeholder="メッセージを入力..." 
+                       class="flex-1 px-3 py-2 border border-gray-300 rounded-md">
+                <button onclick="sendMessage()" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
+                  送信
+                </button>
+              </div>
+              
+              <!-- クイック返信テンプレート -->
+              <div class="mt-3">
+                <div class="text-sm text-gray-600 mb-2">クイック返信:</div>
+                <div class="flex flex-wrap gap-2">
+                  <button onclick="insertQuickReply('ご予約ありがとうございます。当日お待ちしております。')" 
+                          class="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200">
+                    予約確認
+                  </button>
+                  <button onclick="insertQuickReply('お疲れ様でした。またのご来店をお待ちしております。')" 
+                          class="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200">
+                    施術後
+                  </button>
+                  <button onclick="insertQuickReply('お久しぶりです。いかがお過ごしでしょうか？')" 
+                          class="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200">
+                    フォローアップ
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+                    <!-- 一括配信設定 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mt-6">
+          <h3 class="text-lg font-semibold mb-4">📢 一括メッセージ配信</h3>
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">配信対象</label>
+                  <select id="broadcastTarget" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    <option value="all">全顧客</option>
+                    <option value="vip">VIP顧客</option>
+                    <option value="regular">常連顧客</option>
+                    <option value="new">新規顧客</option>
+                    <option value="inactive">離反リスク顧客</option>
+                    <option value="birthday">今月誕生日</option>
+                    <option value="lastMonth">先月来店</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">メッセージタイプ</label>
+                  <select id="messageType" onchange="loadMessageTemplate()" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    <option value="custom">カスタム</option>
+                    <option value="reminder">来店リマインダー</option>
+                    <option value="birthday">誕生日メッセージ</option>
+                    <option value="campaign">キャンペーン告知</option>
+                    <option value="seasonal">季節限定メニュー</option>
+                    <option value="followup">アフターフォロー</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">メッセージ内容</label>
+                  <textarea id="broadcastMessage" rows="6" class="w-full px-3 py-2 border border-gray-300 rounded-md" 
+                            placeholder="メッセージを入力してください..."></textarea>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                  <input type="checkbox" id="scheduleMessage" class="rounded">
+                  <label for="scheduleMessage" class="text-sm text-gray-700">予約配信</label>
+                </div>
+
+                <div id="scheduleSettings" class="hidden">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">配信日時</label>
+                  <input type="datetime-local" id="scheduleDateTime" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+
+                <div class="flex space-x-3">
+                  <button onclick="previewBroadcast()" class="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+                    プレビュー
+                  </button>
+                  <button onclick="sendBroadcast()" class="flex-1 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                    配信実行
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 class="font-medium mb-3">配信統計</h4>
+              <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <div class="text-2xl font-bold text-blue-600" id="totalMessages">0</div>
+                  <div class="text-sm text-gray-600">総配信数</div>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <div class="text-2xl font-bold text-green-600" id="messageOpenRate">0%</div>
+                  <div class="text-sm text-gray-600">開封率</div>
+                </div>
+              </div>
+
+              <h4 class="font-medium mb-3">最近の配信</h4>
+              <div id="messageHistory" class="space-y-3 max-h-64 overflow-y-auto">
+                <!-- 配信履歴は JavaScript で生成 -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 自動配信設定 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mt-6">
+          <h3 class="text-lg font-semibold mb-4">🤖 自動配信設定</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="p-4 border border-gray-200 rounded-lg">
+              <div class="flex items-center justify-between mb-3">
+                <h4 class="font-medium">予約リマインダー</h4>
+                <input type="checkbox" id="autoReminder" class="rounded">
+              </div>
+              <p class="text-sm text-gray-600 mb-3">予約前日にリマインダーを自動送信</p>
+              <div class="space-y-2">
+                <label class="block text-xs text-gray-500">送信時間</label>
+                <input type="time" id="reminderTime" value="18:00" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+              </div>
+            </div>
+
+            <div class="p-4 border border-gray-200 rounded-lg">
+              <div class="flex items-center justify-between mb-3">
+                <h4 class="font-medium">誕生日メッセージ</h4>
+                <input type="checkbox" id="autoBirthday" class="rounded">
+              </div>
+              <p class="text-sm text-gray-600 mb-3">誕生日当日に自動でお祝いメッセージ送信</p>
+              <div class="space-y-2">
+                <label class="block text-xs text-gray-500">送信時間</label>
+                <input type="time" id="birthdayTime" value="09:00" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+              </div>
+            </div>
+
+            <div class="p-4 border border-gray-200 rounded-lg">
+              <div class="flex items-center justify-between mb-3">
+                <h4 class="font-medium">離反防止</h4>
+                <input type="checkbox" id="autoRetention" class="rounded">
+              </div>
+              <p class="text-sm text-gray-600 mb-3">90日未来店の顧客に自動でメッセージ送信</p>
+              <div class="space-y-2">
+                <label class="block text-xs text-gray-500">実行間隔</label>
+                <select id="retentionInterval" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                  <option value="weekly">週1回</option>
+                  <option value="monthly">月1回</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <button onclick="saveAutoMessageSettings()" class="mt-6 bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+            自動配信設定を保存
+          </button>
+        </div>
+      </div>
+
+      <!-- 売上分析タブ -->
+      <div id="analyticsTab" class="tab-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- 売上グラフ -->
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-semibold mb-4">📈 月別売上推移</h3>
+            <canvas id="revenueChart" width="400" height="300"></canvas>
+          </div>
+
+          <!-- メニュー別売上 -->
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-semibold mb-4">🍽️ メニュー別売上</h3>
+            <canvas id="menuRevenueChart" width="400" height="300"></canvas>
+          </div>
+        </div>
+
+        <!-- 詳細統計 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mt-6">
+          <h3 class="text-lg font-semibold mb-4">📊 詳細統計</h3>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div>
+              <div class="text-2xl font-bold text-blue-600" id="avgTicket">¥0</div>
+              <div class="text-sm text-gray-600">平均客単価</div>
+            </div>
+            <div>
+              <div class="text-2xl font-bold text-green-600" id="repeatRate">0%</div>
+              <div class="text-sm text-gray-600">リピート率</div>
+            </div>
+            <div>
+              <div class="text-2xl font-bold text-purple-600" id="customerLTV">¥0</div>
+              <div class="text-sm text-gray-600">平均LTV</div>
+            </div>
+            <div>
+              <div class="text-2xl font-bold text-orange-600" id="growthRate">0%</div>
+              <div class="text-sm text-gray-600">前月比成長率</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- モーダル -->
-  <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-      <div class="flex justify-between items-center mb-4">
-        <h3 id="modalTitle" class="text-lg font-semibold">詳細</h3>
-        <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+  <!-- 顧客詳細モーダル -->
+  <div id="customerModal" class="modal">
+    <div class="bg-white rounded-lg w-full max-w-4xl mx-4 max-h-full overflow-y-auto">
+      <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+        <h3 class="text-lg font-semibold text-gray-900" id="modalCustomerName">顧客カルテ</h3>
+        <button id="closeCustomerModal" class="text-gray-400 hover:text-gray-600">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
         </button>
       </div>
-      <div id="modalContent">
-        <!-- モーダル内容は JavaScript で動的に挿入 -->
+      
+      <div class="p-6">
+        <!-- カウンセリングシート -->
+        <div class="bg-blue-50 p-4 rounded-lg mb-6">
+          <h4 class="font-semibold mb-3">📋 カウンセリングシート</h4>
+          <div id="customerCounseling">
+            <!-- カウンセリング内容は JavaScript で生成 -->
+          </div>
+          <button onclick="openCounselingModal()" class="mt-3 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors">
+            カウンセリング実施
+          </button>
+        </div>
+
+        <!-- 基本情報 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h4 class="font-semibold mb-3">基本情報</h4>
+            <div id="customerBasicInfo" class="space-y-2">
+              <!-- 基本情報は JavaScript で生成 -->
+            </div>
+          </div>
+          
+          <div>
+            <h4 class="font-semibold mb-3">来店履歴</h4>
+            <div id="customerVisitHistory" class="space-y-2 max-h-64 overflow-y-auto">
+              <!-- 来店履歴は JavaScript で生成 -->
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Firebase SDK -->
+  <!-- メニュー編集モーダル -->
+  <div id="menuModal" class="modal">
+    <div class="bg-white rounded-lg w-full max-w-md mx-4">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900" id="menuModalTitle">メニュー編集</h3>
+      </div>
+      <div class="p-6">
+        <form id="menuForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">メニュー名</label>
+            <input type="text" id="menuName" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">料金</label>
+            <input type="number" id="menuPrice" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">所要時間（分）</label>
+            <input type="number" id="menuDuration" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">説明</label>
+            <textarea id="menuDescription" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">画像URL</label>
+            <input type="url" id="menuPhotoURL" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+          </div>
+          <div class="flex space-x-3">
+            <button type="button" onclick="closeMenuModal()" class="flex-1 bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">
+              キャンセル
+            </button>
+            <button type="submit" class="flex-1 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
+              保存
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- スタッフ編集モーダル -->
+  <div id="staffModal" class="modal">
+    <div class="bg-white rounded-lg w-full max-w-md mx-4">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900" id="staffModalTitle">スタッフ編集</h3>
+      </div>
+      <div class="p-6">
+        <form id="staffForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">スタッフ名</label>
+            <input type="text" id="staffName" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">役職</label>
+            <select id="staffRole" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+              <option value="スタイリスト">スタイリスト</option>
+              <option value="トップスタイリスト">トップスタイリスト</option>
+              <option value="アシスタント">アシスタント</option>
+              <option value="店長">店長</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">得意分野</label>
+            <textarea id="staffSpecialty" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">写真URL</label>
+            <input type="url" id="staffPhotoURL" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+          </div>
+          <div class="flex space-x-3">
+            <button type="button" onclick="closeStaffModal()" class="flex-1 bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">
+              キャンセル
+            </button>
+            <button type="submit" class="flex-1 bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600">
+              保存
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- カウンセリングモーダル -->
+  <div id="counselingModal" class="modal">
+    <div class="bg-white rounded-lg w-full max-w-3xl mx-4 max-h-full overflow-y-auto">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900">📋 カウンセリングシート</h3>
+      </div>
+      <div class="p-6">
+        <form id="counselingForm" class="space-y-6">
+          <!-- 基本情報 -->
+          <div>
+            <h4 class="font-medium mb-3">基本情報</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">髪質</label>
+                <select id="counselingHairType" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                  <option value="">選択してください</option>
+                  <option value="ストレート">ストレート</option>
+                  <option value="ウェーブ">ウェーブ</option>
+                  <option value="カール">カール</option>
+                  <option value="くせ毛">くせ毛</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">髪の量</label>
+                <select id="counselingHairVolume" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                  <option value="">選択してください</option>
+                  <option value="少ない">少ない</option>
+                  <option value="普通">普通</option>
+                  <option value="多い">多い</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- 髪の悩み -->
+          <div>
+            <h4 class="font-medium mb-3">髪の悩み・希望</h4>
+            <div class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">現在の髪の悩み</label>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="hair-concern" value="パサつき" class="rounded">
+                    <span class="text-sm">パサつき</span>
+                  </label>
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="hair-concern" value="うねり" class="rounded">
+                    <span class="text-sm">うねり</span>
+                  </label>
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="hair-concern" value="ボリューム不足" class="rounded">
+                    <span class="text-sm">ボリューム不足</span>
+                  </label>
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="hair-concern" value="白髪" class="rounded">
+                    <span class="text-sm">白髪</span>
+                  </label>
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="hair-concern" value="頭皮の悩み" class="rounded">
+                    <span class="text-sm">頭皮の悩み</span>
+                  </label>
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="hair-concern" value="その他" class="rounded">
+                    <span class="text-sm">その他</span>
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">希望するスタイル</label>
+                <textarea id="counselingDesiredStyle" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md" 
+                          placeholder="どのようなスタイルをご希望ですか？"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- ライフスタイル -->
+          <div>
+            <h4 class="font-medium mb-3">ライフスタイル</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">朝のスタイリング時間</label>
+                <select id="counselingStylingTime" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                  <option value="">選択してください</option>
+                  <option value="5分以内">5分以内</option>
+                  <option value="10分程度">10分程度</option>
+                  <option value="15分程度">15分程度</option>
+                  <option value="20分以上">20分以上</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">使用中のスタイリング剤</label>
+                <input type="text" id="counselingStylingProducts" class="w-full px-3 py-2 border border-gray-300 rounded-md" 
+                       placeholder="例）ワックス、ムース、オイル等">
+              </div>
+            </div>
+          </div>
+
+          <!-- アレルギー・注意事項 -->
+          <div>
+            <h4 class="font-medium mb-3">アレルギー・注意事項</h4>
+            <div class="space-y-3">
+              <div>
+                <label class="flex items-center space-x-2">
+                  <input type="checkbox" id="hasAllergies" class="rounded">
+                  <span class="text-sm">アレルギーがある</span>
+                </label>
+              </div>
+              <div id="allergyDetails" class="hidden">
+                <textarea id="counselingAllergies" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md" 
+                          placeholder="アレルギーの詳細をご記入ください"></textarea>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">その他注意事項</label>
+                <textarea id="counselingNotes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md" 
+                          placeholder="施術時に注意すべき点があればご記入ください"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex space-x-3">
+            <button type="button" onclick="closeCounselingModal()" class="flex-1 bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">
+              キャンセル
+            </button>
+            <button type="submit" class="flex-1 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
+              カウンセリング保存
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK（サンプル - 実際のプロジェクトではFirebase設定が必要） -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
   <script>
-    // Firebase 初期化
+    // ===== Firebase 初期化（サンプル設定） =====
     const firebaseConfig = {
-      apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
-      authDomain: "salone-ponte-fceca.firebaseapp.com",
-      projectId: "salone-ponte-fceca",
-      storageBucket: "salone-ponte-fceca.appspot.com",
-      messagingSenderId: "463711728652",
-      appId: "1:463711728652:web:59c749e11d201b26b86a29",
-      measurementId: "G-MPWGTB6R7C"
+      // 実際のプロジェクトでは適切なFirebase設定を使用
+      apiKey: "demo-key",
+      authDomain: "demo.firebaseapp.com",
+      projectId: "demo-project"
     };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    
+    // Firebase初期化（デモ用の設定）
+    try {
+      firebase.initializeApp(firebaseConfig);
+      window.db = firebase.firestore();
+    } catch (error) {
+      console.log('Firebase Demo Mode');
+      // デモモード用のモックDB
+      window.db = {
+        collection: () => ({
+          get: () => Promise.resolve({ forEach: () => {} }),
+          add: () => Promise.resolve({ id: 'demo' + Date.now() }),
+          doc: () => ({
+            get: () => Promise.resolve({ exists: false, data: () => ({}) }),
+            set: () => Promise.resolve(),
+            update: () => Promise.resolve(),
+            delete: () => Promise.resolve()
+          })
+        })
+      };
+    }
 
-    // グローバル変数
-    let reservationsData = [];
+    // ===== グローバル変数 =====
+    let currentTab = 'dashboard';
     let customersData = [];
-    let staffsData = [];
     let menusData = [];
-    let charts = {};
+    let staffsData = [];
+    let reservationsData = [];
+    let messagesData = [];
+    let currentCustomer = null;
+    let currentMenu = null;
+    let currentStaff = null;
+    let selectedChatCustomer = null;
 
-    // 初期化
+    // ===== 初期化 =====
     document.addEventListener('DOMContentLoaded', function() {
-      initializeTabs();
-      loadAllData();
+      initializeData();
       setupEventListeners();
+      loadDashboard();
     });
 
-    // タブ初期化
-    function initializeTabs() {
-      const tabButtons = document.querySelectorAll('.tab-button');
-      const tabContents = document.querySelectorAll('.tab-content');
-
-      tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-          const tabId = button.dataset.tab;
-          
-          // タブボタンのアクティブ状態を更新
-          tabButtons.forEach(btn => btn.classList.remove('tab-active'));
-          button.classList.add('tab-active');
-          
-          // タブコンテンツの表示/非表示を切り替え
-          tabContents.forEach(content => {
-            if (content.id === `${tabId}-tab`) {
-              content.classList.remove('hidden');
-            } else {
-              content.classList.add('hidden');
-            }
-          });
-          
-          // タブ切り替え時の処理
-          if (tabId === 'analytics') {
-            renderCharts();
-          }
-        });
-      });
-
-      // 最初のタブをアクティブに
-      if (tabButtons.length > 0) {
-        tabButtons[0].click();
-      }
-    }
-
-    // イベントリスナー設定
-    function setupEventListeners() {
-      document.getElementById('refreshReservations').addEventListener('click', loadReservations);
-      document.getElementById('refreshCustomers').addEventListener('click', loadCustomers);
-      document.getElementById('closeModal').addEventListener('click', closeModal);
-      
-      // フィルター
-      document.getElementById('reservationDateFilter').addEventListener('change', filterReservations);
-      document.getElementById('reservationStatusFilter').addEventListener('change', filterReservations);
-      document.getElementById('customerSearchInput').addEventListener('input', filterCustomers);
-      document.getElementById('customerSegmentFilter').addEventListener('change', filterCustomers);
-    }
-
-    // 全データ読み込み
-    async function loadAllData() {
-      try {
-        await Promise.all([
-          loadReservations(),
-          loadCustomers(),
-          loadStaffs(),
-          loadMenus()
-        ]);
-        updateMetrics();
-        renderCharts();
-      } catch (error) {
-        console.error('データ読み込みエラー:', error);
-        showError('データの読み込みに失敗しました');
-      }
-    }
-
-    // 予約データ読み込み
-    async function loadReservations() {
-      try {
-        const snapshot = await db.collection('reservations').orderBy('datetime', 'desc').get();
-        reservationsData = [];
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          reservationsData.push({
-            id: doc.id,
-            ...data,
-            datetime: new Date(data.datetime),
-            createdAt: new Date(data.createdAt)
-          });
-        });
-        renderReservationsTable();
-      } catch (error) {
-        console.error('予約データ読み込みエラー:', error);
-      }
-    }
-
-    // 顧客データ読み込み
-    async function loadCustomers() {
-      try {
-        const snapshot = await db.collection('customers').get();
-        customersData = [];
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          const reservations = data.reservations || [];
-          
-          // 顧客分析データを計算
-          const visitCount = reservations.length;
-          const totalAmount = reservations.reduce((sum, res) => sum + (res.price || 0), 0);
-          const lastVisit = reservations.length > 0 ? 
-            new Date(Math.max(...reservations.map(r => new Date(r.datetime).getTime()))) : null;
-          
-          // 顧客セグメント判定
-          const segment = determineCustomerSegment(visitCount, lastVisit, totalAmount);
-          
-          customersData.push({
-            id: doc.id,
-            ...data,
-            visitCount,
-            totalAmount,
-            lastVisit,
-            segment
-          });
-        });
-        renderCustomersTable();
-      } catch (error) {
-        console.error('顧客データ読み込みエラー:', error);
-      }
-    }
-
-    // スタッフデータ読み込み
-    async function loadStaffs() {
-      try {
-        const snapshot = await db.collection('staffs').get();
-        staffsData = [];
-        snapshot.forEach(doc => {
-          staffsData.push({
-            id: doc.id,
-            ...doc.data()
-          });
-        });
-        renderStaffList();
-      } catch (error) {
-        console.error('スタッフデータ読み込みエラー:', error);
-      }
-    }
-
-    // メニューデータ読み込み
-    async function loadMenus() {
-      try {
-        const snapshot = await db.collection('menus').get();
-        menusData = [];
-        snapshot.forEach(doc => {
-          menusData.push({
-            id: doc.id,
-            ...doc.data()
-          });
-        });
-      } catch (error) {
-        console.error('メニューデータ読み込みエラー:', error);
-      }
-    }
-
-    // メトリクス更新
-    function updateMetrics() {
-      const today = new Date();
-      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-
-      // 今日の予約と売上
-      const todayReservations = reservationsData.filter(r => 
-        r.datetime >= todayStart && r.datetime < new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
-      );
-      const todayRevenue = todayReservations.reduce((sum, r) => sum + (r.price || 0), 0);
-
-      // 今月の売上
-      const monthlyReservations = reservationsData.filter(r => r.datetime >= monthStart);
-      const monthlyRevenue = monthlyReservations.reduce((sum, r) => sum + (r.price || 0), 0);
-
-      // DOM更新
-      document.getElementById('todayRevenue').textContent = `¥${todayRevenue.toLocaleString()}`;
-      document.getElementById('monthlyRevenue').textContent = `¥${monthlyRevenue.toLocaleString()}`;
-      document.getElementById('todayReservations').textContent = todayReservations.length;
-      document.getElementById('totalCustomers').textContent = customersData.length;
-    }
-
-    // 顧客セグメント判定
-    function determineCustomerSegment(visitCount, lastVisit, totalAmount) {
-      const now = new Date();
-      const daysSinceLastVisit = lastVisit ? 
-        Math.floor((now - lastVisit) / (1000 * 60 * 60 * 24)) : 999;
-
-      if (totalAmount >= 50000 && visitCount >= 10) return 'vip';
-      if (visitCount >= 5 && daysSinceLastVisit <= 60) return 'regular';
-      if (visitCount <= 2) return 'new';
-      if (daysSinceLastVisit > 90) return 'inactive';
-      return 'regular';
-    }
-
-    // チャート描画
-    function renderCharts() {
-      renderRevenueChart();
-      renderMenuChart();
-      renderStaffChart();
-      renderTimeChart();
-      renderStaffPerformanceChart();
-    }
-
-    // 売上推移チャート
-    function renderRevenueChart() {
-      const ctx = document.getElementById('revenueChart').getContext('2d');
-      
-      // 過去30日のデータを準備
-      const last30Days = [];
-      const revenueData = [];
-      
-      for (let i = 29; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-        const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-        
-        const dayReservations = reservationsData.filter(r => 
-          r.datetime >= dayStart && r.datetime < dayEnd
-        );
-        const dayRevenue = dayReservations.reduce((sum, r) => sum + (r.price || 0), 0);
-        
-        last30Days.push(date.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' }));
-        revenueData.push(dayRevenue);
-      }
-
-      if (charts.revenue) charts.revenue.destroy();
-      
-      charts.revenue = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: last30Days,
-          datasets: [{
-            label: '売上',
-            data: revenueData,
-            borderColor: 'rgb(59, 130, 246)',
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            tension: 0.1
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              ticks: {
-                callback: function(value) {
-                  return '¥' + value.toLocaleString();
-                }
-              }
-            }
-          }
-        }
-      });
-    }
-
-    // メニュー別売上チャート
-    function renderMenuChart() {
-      const ctx = document.getElementById('menuChart').getContext('2d');
-      
-      // メニュー別売上集計
-      const menuRevenue = {};
-      reservationsData.forEach(r => {
-        const menuName = r.menuName || 'その他';
-        menuRevenue[menuName] = (menuRevenue[menuName] || 0) + (r.price || 0);
-      });
-
-      const labels = Object.keys(menuRevenue);
-      const data = Object.values(menuRevenue);
-
-      if (charts.menu) charts.menu.destroy();
-
-      charts.menu = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: labels,
-          datasets: [{
-            data: data,
-            backgroundColor: [
-              '#ef4444', '#f97316', '#eab308', '#22c55e', 
-              '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'
-            ]
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false
-        }
-      });
-    }
-
-    // スタッフ別売上チャート
-    function renderStaffChart() {
-      const ctx = document.getElementById('staffChart').getContext('2d');
-      
-      // スタッフ別売上集計
-      const staffRevenue = {};
-      reservationsData.forEach(r => {
-        const staffName = r.staffName || 'その他';
-        staffRevenue[staffName] = (staffRevenue[staffName] || 0) + (r.price || 0);
-      });
-
-      const labels = Object.keys(staffRevenue);
-      const data = Object.values(staffRevenue);
-
-      if (charts.staff) charts.staff.destroy();
-
-      charts.staff = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: '売上',
-            data: data,
-            backgroundColor: 'rgba(34, 197, 94, 0.8)'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              ticks: {
-                callback: function(value) {
-                  return '¥' + value.toLocaleString();
-                }
-              }
-            }
-          }
-        }
-      });
-    }
-
-    // 時間帯別予約数チャート
-    function renderTimeChart() {
-      const ctx = document.getElementById('timeChart').getContext('2d');
-      
-      // 時間帯別集計
-      const hourlyData = new Array(24).fill(0);
-      reservationsData.forEach(r => {
-        const hour = r.datetime.getHours();
-        hourlyData[hour]++;
-      });
-
-      const labels = Array.from({length: 24}, (_, i) => `${i}:00`);
-
-      if (charts.time) charts.time.destroy();
-
-      charts.time = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: '予約数',
-            data: hourlyData,
-            backgroundColor: 'rgba(147, 51, 234, 0.8)'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true
-            }
-          }
-        }
-      });
-    }
-
-    // スタッフパフォーマンスチャート
-    function renderStaffPerformanceChart() {
-      const ctx = document.getElementById('staffPerformanceChart').getContext('2d');
-      
-      // スタッフ別の予約数と売上
-      const staffStats = {};
-      reservationsData.forEach(r => {
-        const staffName = r.staffName || 'その他';
-        if (!staffStats[staffName]) {
-          staffStats[staffName] = { count: 0, revenue: 0 };
-        }
-        staffStats[staffName].count++;
-        staffStats[staffName].revenue += (r.price || 0);
-      });
-
-      const labels = Object.keys(staffStats);
-      const countData = labels.map(name => staffStats[name].count);
-      const revenueData = labels.map(name => staffStats[name].revenue);
-
-      if (charts.staffPerformance) charts.staffPerformance.destroy();
-
-      charts.staffPerformance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [
-            {
-              label: '予約数',
-              data: countData,
-              backgroundColor: 'rgba(59, 130, 246, 0.8)',
-              yAxisID: 'y'
-            },
-            {
-              label: '売上',
-              data: revenueData,
-              backgroundColor: 'rgba(34, 197, 94, 0.8)',
-              yAxisID: 'y1'
-            }
+    function initializeData() {
+      // デモデータ初期化
+      customersData = [
+        {
+          id: 'customer1',
+          name: '田中 花子',
+          phone: '090-1234-5678',
+          totalVisits: 5,
+          totalSpent: 25000,
+          lastVisit: new Date('2024-11-15'),
+          daysSinceLastVisit: 38,
+          tags: ['常連顧客'],
+          birthday: '1990-03-15',
+          counseling: {
+            hairType: 'ウェーブ',
+            hairVolume: '普通',
+            concerns: ['パサつき', 'うねり'],
+            desiredStyle: 'ナチュラルなボブスタイル',
+            completedAt: '2024-10-01'
+          },
+          reservations: [
+            { datetime: '2024-11-15T14:00:00', menu: 'カット＋カラー', staff: '山田', price: 8000 },
+            { datetime: '2024-09-10T15:30:00', menu: 'カット', staff: '田中', price: 5000 }
           ]
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              type: 'linear',
-              display: true,
-              position: 'left',
-            },
-            y1: {
-              type: 'linear',
-              display: true,
-              position: 'right',
-              grid: {
-                drawOnChartArea: false,
-              },
-              ticks: {
-                callback: function(value) {
-                  return '¥' + value.toLocaleString();
-                }
-              }
-            }
-          }
-        }
-      });
-    }
-
-    // 予約テーブル描画
-    function renderReservationsTable() {
-      const tbody = document.getElementById('reservationsTableBody');
-      tbody.innerHTML = '';
-
-      let filteredData = [...reservationsData];
-      
-      // フィルター適用
-      const dateFilter = document.getElementById('reservationDateFilter').value;
-      const statusFilter = document.getElementById('reservationStatusFilter').value;
-
-      if (dateFilter) {
-        const filterDate = new Date(dateFilter);
-        filteredData = filteredData.filter(r => {
-          const resDate = new Date(r.datetime.getFullYear(), r.datetime.getMonth(), r.datetime.getDate());
-          const filterDateOnly = new Date(filterDate.getFullYear(), filterDate.getMonth(), filterDate.getDate());
-          return resDate.getTime() === filterDateOnly.getTime();
-        });
-      }
-
-      if (statusFilter) {
-        filteredData = filteredData.filter(r => r.status === statusFilter);
-      }
-
-      filteredData.forEach(reservation => {
-        const row = document.createElement('tr');
-        row.className = 'hover:bg-gray-50';
-        
-        const status = reservation.status || 'confirmed';
-        const statusBadge = getStatusBadge(status);
-        
-        row.innerHTML = `
-          <td class="px-4 py-2 text-sm">${reservation.datetime.toLocaleString('ja-JP')}</td>
-          <td class="px-4 py-2 text-sm">${reservation.name || '-'}</td>
-          <td class="px-4 py-2 text-sm">${reservation.menuName || '-'}</td>
-          <td class="px-4 py-2 text-sm">${reservation.staffName || '-'}</td>
-          <td class="px-4 py-2 text-sm">¥${(reservation.price || 0).toLocaleString()}</td>
-          <td class="px-4 py-2 text-sm">${statusBadge}</td>
-          <td class="px-4 py-2 text-sm">
-            <button onclick="showReservationDetail('${reservation.id}')" 
-                    class="text-blue-600 hover:text-blue-800 text-sm">詳細</button>
-            <button onclick="cancelReservation('${reservation.id}')" 
-                    class="ml-2 text-red-600 hover:text-red-800 text-sm">キャンセル</button>
-          </td>
-        `;
-        tbody.appendChild(row);
-      });
-    }
-
-    // 顧客テーブル描画
-    function renderCustomersTable() {
-      const tbody = document.getElementById('customersTableBody');
-      tbody.innerHTML = '';
-
-      let filteredData = [...customersData];
-      
-      // フィルター適用
-      const searchInput = document.getElementById('customerSearchInput').value.toLowerCase();
-      const segmentFilter = document.getElementById('customerSegmentFilter').value;
-
-      if (searchInput) {
-        filteredData = filteredData.filter(c => 
-          (c.name || '').toLowerCase().includes(searchInput)
-        );
-      }
-
-      if (segmentFilter) {
-        filteredData = filteredData.filter(c => c.segment === segmentFilter);
-      }
-
-      filteredData.forEach(customer => {
-        const row = document.createElement('tr');
-        row.className = 'hover:bg-gray-50';
-        
-        const segmentBadge = getSegmentBadge(customer.segment);
-        const lastVisitText = customer.lastVisit ? 
-          customer.lastVisit.toLocaleDateString('ja-JP') : '-';
-        
-        row.innerHTML = `
-          <td class="px-4 py-2 text-sm">${customer.name || '-'}</td>
-          <td class="px-4 py-2 text-sm">${customer.phone || '-'}</td>
-          <td class="px-4 py-2 text-sm">${customer.visitCount}</td>
-          <td class="px-4 py-2 text-sm">${lastVisitText}</td>
-          <td class="px-4 py-2 text-sm">¥${customer.totalAmount.toLocaleString()}</td>
-          <td class="px-4 py-2 text-sm">${segmentBadge}</td>
-          <td class="px-4 py-2 text-sm">
-            <button onclick="showCustomerDetail('${customer.id}')" 
-                    class="text-blue-600 hover:text-blue-800 text-sm">詳細</button>
-          </td>
-        `;
-        tbody.appendChild(row);
-      });
-    }
-
-    // スタッフリスト描画
-    function renderStaffList() {
-      const container = document.getElementById('staffList');
-      container.innerHTML = '';
-
-      staffsData.forEach(staff => {
-        // このスタッフの統計を計算
-        const staffReservations = reservationsData.filter(r => r.staffId === staff.id);
-        const staffRevenue = staffReservations.reduce((sum, r) => sum + (r.price || 0), 0);
-        
-        const card = document.createElement('div');
-        card.className = 'bg-gray-50 rounded-lg p-4 mb-4';
-        card.innerHTML = `
-          <div class="flex items-center space-x-4">
-            <img src="${staff.photoURL || 'https://dummyimage.com/60x60/cccccc/000000.png'}" 
-                 alt="${staff.name}" 
-                 class="w-12 h-12 rounded-full object-cover">
-            <div class="flex-1">
-              <h4 class="font-medium">${staff.name || '-'}</h4>
-              <p class="text-sm text-gray-600">${staff.specialty || '-'}</p>
-              <div class="flex space-x-4 mt-2 text-sm">
-                <span>予約数: ${staffReservations.length}</span>
-                <span>売上: ¥${staffRevenue.toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-        `;
-        container.appendChild(card);
-      });
-    }
-
-    // ステータスバッジ
-    function getStatusBadge(status) {
-      const badges = {
-        confirmed: '<span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">確定</span>',
-        cancelled: '<span class="px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">キャンセル</span>',
-        completed: '<span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">完了</span>'
-      };
-      return badges[status] || badges.confirmed;
-    }
-
-    // セグメントバッジ
-    function getSegmentBadge(segment) {
-      const badges = {
-        vip: '<span class="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">VIP</span>',
-        regular: '<span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">常連</span>',
-        new: '<span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">新規</span>',
-        inactive: '<span class="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-full">休眠</span>'
-      };
-      return badges[segment] || badges.regular;
-    }
-
-    // フィルター関数
-    function filterReservations() {
-      renderReservationsTable();
-    }
-
-    function filterCustomers() {
-      renderCustomersTable();
-    }
-
-    // モーダル関数
-    function showReservationDetail(reservationId) {
-      const reservation = reservationsData.find(r => r.id === reservationId);
-      if (!reservation) return;
-
-      document.getElementById('modalTitle').textContent = '予約詳細';
-      document.getElementById('modalContent').innerHTML = `
-        <div class="space-y-4">
-          <div><strong>予約ID:</strong> ${reservation.id}</div>
-          <div><strong>顧客名:</strong> ${reservation.name}</div>
-          <div><strong>メニュー:</strong> ${reservation.menuName}</div>
-          <div><strong>スタッフ:</strong> ${reservation.staffName}</div>
-          <div><strong>日時:</strong> ${reservation.datetime.toLocaleString('ja-JP')}</div>
-          <div><strong>金額:</strong> ¥${(reservation.price || 0).toLocaleString()}</div>
-          <div><strong>所要時間:</strong> ${reservation.duration || 0}分</div>
-          <div><strong>メモ:</strong> ${reservation.note || '-'}</div>
-        </div>
-      `;
-      showModal();
-    }
-
-    function showCustomerDetail(customerId) {
-      const customer = customersData.find(c => c.id === customerId);
-      if (!customer) return;
-
-      const reservationHistory = (customer.reservations || [])
-        .sort((a, b) => new Date(b.datetime) - new Date(a.datetime))
-        .slice(0, 5)
-        .map(r => `
-          <div class="py-2 border-b">
-            <div class="text-sm">${new Date(r.datetime).toLocaleDateString('ja-JP')} - ${r.menu}</div>
-            <div class="text-xs text-gray-600">¥${(r.price || 0).toLocaleString()}</div>
-          </div>
-        `).join('');
-
-      document.getElementById('modalTitle').textContent = '顧客詳細';
-      document.getElementById('modalContent').innerHTML = `
-        <div class="space-y-4">
-          <div><strong>顧客名:</strong> ${customer.name}</div>
-          <div><strong>電話番号:</strong> ${customer.phone || '-'}</div>
-          <div><strong>来店回数:</strong> ${customer.visitCount}回</div>
-          <div><strong>累計金額:</strong> ¥${customer.totalAmount.toLocaleString()}</div>
-          <div><strong>最終来店:</strong> ${customer.lastVisit ? customer.lastVisit.toLocaleDateString('ja-JP') : '-'}</div>
-          <div><strong>セグメント:</strong> ${getSegmentBadge(customer.segment)}</div>
-          <div>
-            <strong>来店履歴:</strong>
-            <div class="mt-2 max-h-32 overflow-y-auto">
-              ${reservationHistory || '<div class="text-sm text-gray-600">履歴なし</div>'}
-            </div>
-          </div>
-        </div>
-      `;
-      showModal();
-    }
-
-    function showModal() {
-      document.getElementById('modal').classList.remove('hidden');
-      document.getElementById('modal').classList.add('flex');
-    }
-
-    function closeModal() {
-      document.getElementById('modal').classList.add('hidden');
-      document.getElementById('modal').classList.remove('flex');
-    }
-
-    // 予約キャンセル
-    async function cancelReservation(reservationId) {
-      if (!confirm('この予約をキャンセルしますか？')) return;
-      
-      try {
-        await db.collection('reservations').doc(reservationId).update({
-          status: 'cancelled'
-        });
-        await loadReservations();
-        updateMetrics();
-        showSuccess('予約をキャンセルしました');
-      } catch (error) {
-        console.error('キャンセルエラー:', error);
-        showError('キャンセルに失敗しました');
-      }
-    }
-
-    // 通知表示
-    function showSuccess(message) {
-      // 簡易的な成功通知
-      alert(message);
-    }
-
-    function showError(message) {
-      // 簡易的なエラー通知
-      alert(message);
-    }
-
-    // ウィンドウの予約キャンセル関数をグローバルに公開
-    window.cancelReservation = cancelReservation;
-    window.showReservationDetail = showReservationDetail;
-    window.showCustomerDetail = showCustomerDetail;
-  </script>
-</body>
-</html>
+        {
+          id: 'customer2',
+          name: '佐藤 太郎',
+          phone: '080-9876-5432',
+          totalVisits: 1,
+          totalSpent: 3000,
+          lastVisit: new Date('2024-12-01'),
+          daysSinceLastVisit: 21,
+          tags: ['新規顧客'],
+          birthday: '1985-07-22',
+          reservations: [
+            { datetime: '2024-12-01T10:00:00', menu: 'カット', staff: '山田', price: 3000 }
+          ]
+        },
+        {
+          id: 'customer3',
+          name: '鈴木 美咲',
+          phone: '070-1111-2222',
+          totalVisits: 12,
+          totalSpent: 80000,
+          lastVisit: new Date('2024-08-15'),
+          daysSinceLastVisit: 130,
+          tags: ['VIP顧客', '離反リスク'],
+          birthday: '1988-12-03',
+          counseling: {
+            hairType: 'ストレート',
+            hairVolume: '多い',
+            concerns: ['白髪', 'ボリューム不足'],
+            desiredStyle: '上品なミディアムス

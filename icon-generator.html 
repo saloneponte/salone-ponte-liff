@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PWA アイコン生成ツール</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #007bff;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .upload-area {
+      border: 2px dashed #007bff;
+      border-radius: 8px;
+      padding: 40px;
+      text-align: center;
+      margin-bottom: 30px;
+      background: #f8f9ff;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .upload-area:hover {
+      background: #e3f2fd;
+      border-color: #0056b3;
+    }
+    .upload-area.dragover {
+      background: #e3f2fd;
+      border-color: #0056b3;
+      transform: scale(1.02);
+    }
+    #fileInput {
+      display: none;
+    }
+    .preview {
+      text-align: center;
+      margin: 20px 0;
+    }
+    .preview img {
+      max-width: 200px;
+      max-height: 200px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .icon-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 15px;
+      margin-top: 30px;
+    }
+    .icon-item {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      border: 1px solid #dee2e6;
+    }
+    .icon-item img {
+      width: 100%;
+      max-width: 80px;
+      height: auto;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+    .icon-item .size {
+      font-size: 12px;
+      color: #6c757d;
+      font-weight: 500;
+    }
+    .download-btn {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      margin-top: 5px;
+      transition: background 0.3s ease;
+    }
+    .download-btn:hover {
+      background: #218838;
+    }
+    .download-all {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin: 30px auto;
+      display: block;
+      transition: all 0.3s ease;
+    }
+    .download-all:hover {
+      background: #0056b3;
+      transform: translateY(-2px);
+    }
+    .instructions {
+      background: #e7f3ff;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 30px;
+      border-left: 4px solid #007bff;
+    }
+    .instructions h3 {
+      margin-top: 0;
+      color: #007bff;
+    }
+    .instructions ol {
+      margin: 10px 0;
+    }
+    .instructions li {
+      margin: 8px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>💇‍♀️ Salone Ponte PWAアイコン生成</h1>
+    
+    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+      <div style="font-size: 48px; margin-bottom: 15px;">📷</div>
+      <h3 style="margin: 0 0 10px;">ロゴ画像をアップロード</h3>
+      <p style="margin: 0; color: #6c757d;">
+        クリックまたはドラッグ&ドロップで画像を選択<br>
+        推奨：512x512px以上のPNG形式
+      </p>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+
+    <div id="preview" class="preview" style="display: none;">
+      <img id="previewImg" src="" alt="プレビュー">
+    </div>
+
+    <div id="iconGrid" class="icon-grid" style="display: none;"></div>
+
+    <button id="downloadAll" class="download-all" style="display: none;">
+      📦 全アイコンをZIPでダウンロード
+    </button>
+
+    <div class="instructions">
+      <h3>📋 使用方法</h3>
+      <ol>
+        <li><strong>ロゴ画像をアップロード:</strong> 512x512px以上の正方形画像が最適です</li>
+        <li><strong>アイコン生成:</strong> 自動で全サイズのアイコンが生成されます</li>
+        <li><strong>ダウンロード:</strong> 個別またはZIPで一括ダウンロード可能</li>
+        <li><strong>配置:</strong> プロジェクトの <code>/icons/</code> フォルダに配置してください</li>
+      </ol>
+      
+      <h3>📱 必要なサイズ</h3>
+      <p>PWA対応に必要な全サイズ（72px, 96px, 128px, 144px, 152px, 192px, 384px, 512px）を自動生成します。</p>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const uploadArea = document.querySelector('.upload-area');
+    const preview = document.getElementById('preview');
+    const previewImg = document.getElementById('previewImg');
+    const iconGrid = document.getElementById('iconGrid');
+    const downloadAll = document.getElementById('downloadAll');
+
+    // 生成するアイコンサイズ
+    const iconSizes = [72, 96, 128, 144, 152, 192, 384, 512];
+    let generatedIcons = [];
+
+    // ドラッグ&ドロップ対応
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        handleFile(files[0]);
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        handleFile(e.target.files[0]);
+      }
+    });
+
+    function handleFile(file) {
+      if (!file.type.startsWith('image/')) {
+        alert('画像ファイルを選択してください。');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        previewImg.src = e.target.result;
+        preview.style.display = 'block';
+        generateIcons(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function generateIcons(imageSrc) {
+      const img = new Image();
+      img.onload = () => {
+        iconGrid.innerHTML = '';
+        generatedIcons = [];
+
+        iconSizes.forEach(size => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = size;
+          canvas.height = size;
+
+          // 背景を白に設定（透明度対応）
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, size, size);
+
+          // 画像を描画
+          ctx.drawImage(img, 0, 0, size, size);
+
+          // アイコンアイテムを作成
+          const iconItem = document.createElement('div');
+          iconItem.className = 'icon-item';
+
+          const iconImg = document.createElement('img');
+          iconImg.src = canvas.toDataURL('image/png');
+          
+          const sizeLabel = document.createElement('div');
+          sizeLabel.className = 'size';
+          sizeLabel.textContent = `${size}x${size}`;
+
+          const downloadBtn = document.createElement('button');
+          downloadBtn.className = 'download-btn';
+          downloadBtn.textContent = 'ダウンロード';
+          downloadBtn.onclick = () => downloadIcon(canvas, size);
+
+          iconItem.appendChild(iconImg);
+          iconItem.appendChild(sizeLabel);
+          iconItem.appendChild(downloadBtn);
+          iconGrid.appendChild(iconItem);
+
+          // ZIPダウンロード用に保存
+          generatedIcons.push({
