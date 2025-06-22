@@ -268,11 +268,44 @@
       margin-bottom: 25px;
     }
 
+    .calendar-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .calendar-nav button {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .calendar-nav button:hover {
+      background: #e9ecef;
+    }
+
+    .calendar-month {
+      font-weight: bold;
+      font-size: 16px;
+    }
+
     .date-grid {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
       gap: 5px;
       margin-top: 10px;
+    }
+
+    .date-header {
+      text-align: center;
+      font-size: 12px;
+      font-weight: bold;
+      color: #666;
+      padding: 8px 0;
     }
 
     .date-item {
@@ -286,7 +319,8 @@
       cursor: pointer;
       transition: all 0.3s ease;
       background: white;
-      font-size: 12px;
+      font-size: 14px;
+      position: relative;
     }
 
     .date-item:hover {
@@ -306,12 +340,13 @@
       cursor: not-allowed;
     }
 
-    .date-day {
-      font-size: 10px;
-      margin-bottom: 2px;
+    .date-item.other-month {
+      color: #ccc;
     }
 
-    .date-number {
+    .date-item.today {
+      background: #e3f2fd;
+      border-color: #2196f3;
       font-weight: bold;
     }
 
@@ -594,8 +629,23 @@
       
       <div class="datetime-section">
         <div class="date-picker">
-          <h3 style="margin-bottom: 10px;">日付を選択</h3>
-          <div id="dateGrid" class="date-grid"></div>
+          <div class="calendar-nav">
+            <button id="prevMonthBtn">‹ 前月</button>
+            <div id="currentMonth" class="calendar-month"></div>
+            <button id="nextMonthBtn">次月 ›</button>
+          </div>
+          
+          <div id="calendarGrid" class="date-grid">
+            <!-- 曜日ヘッダー -->
+            <div class="date-header">日</div>
+            <div class="date-header">月</div>
+            <div class="date-header">火</div>
+            <div class="date-header">水</div>
+            <div class="date-header">木</div>
+            <div class="date-header">金</div>
+            <div class="date-header">土</div>
+            <!-- 日付は JavaScript で生成 -->
+          </div>
         </div>
         
         <div class="time-picker" id="timePicker" style="display: none;">
@@ -698,6 +748,7 @@
     let userId = "";
     let userName = "";
     let isExistingCustomer = false;
+    let currentDisplayMonth = new Date();
 
     // データ
     let menusData = [];
@@ -742,6 +793,16 @@
       document.getElementById('datetimeBackBtn').onclick = () => goToStep(2);
       document.getElementById('confirmBackBtn').onclick = () => goToStep(3);
       
+      // カレンダーナビゲーション
+      document.getElementById('prevMonthBtn').onclick = () => {
+        currentDisplayMonth.setMonth(currentDisplayMonth.getMonth() - 1);
+        renderCalendar();
+      };
+      document.getElementById('nextMonthBtn').onclick = () => {
+        currentDisplayMonth.setMonth(currentDisplayMonth.getMonth() + 1);
+        renderCalendar();
+      };
+      
       // 予約確定
       document.getElementById('bookingSubmitBtn').onclick = submitBooking;
     }
@@ -770,7 +831,7 @@
         updateProgress(40);
       } else if (step === 3) {
         document.getElementById('datetimeSection').classList.add('active');
-        loadDatePicker();
+        renderCalendar();
         updateProgress(60);
       } else if (step === 4) {
         document.getElementById('confirmSection').classList.add('active');
@@ -890,330 +951,3 @@
               <h3>${staff.name}</h3>
               <div class="staff-role">${staff.role || 'スタイリスト'}</div>
             </div>
-          </div>
-          <div class="staff-specialty">${staff.specialty || '丁寧なカウンセリングを心がけています'}</div>
-        `;
-        
-        item.onclick = () => selectStaff(staff, item);
-        grid.appendChild(item);
-      });
-    }
-
-    // スタッフ選択
-    function selectStaff(staff, element) {
-      document.querySelectorAll('.staff-item').forEach(item => {
-        item.classList.remove('selected');
-      });
-      element.classList.add('selected');
-      
-      selectedStaff = staff;
-      document.getElementById('staffNextBtn').style.display = 'block';
-      document.getElementById('staffNextBtn').disabled = false;
-    }
-
-    // 日付ピッカー読み込み
-    function loadDatePicker() {
-      const dateGrid = document.getElementById('dateGrid');
-      dateGrid.innerHTML = '';
-      
-      const today = new Date();
-      const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土'];
-      
-      // 今日から14日間表示
-      for (let i = 0; i < 14; i++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() + i);
-        
-        const dateItem = document.createElement('div');
-        dateItem.className = 'date-item';
-        
-        // 日曜日は休業日として無効化
-        const isDisabled = date.getDay() === 0;
-        if (isDisabled) {
-          dateItem.classList.add('disabled');
-        }
-        
-        dateItem.innerHTML = `
-          <div class="date-day">${daysOfWeek[date.getDay()]}</div>
-          <div class="date-number">${date.getDate()}</div>
-        `;
-        
-        if (!isDisabled) {
-          dateItem.onclick = () => selectDate(date, dateItem);
-        }
-        
-        dateGrid.appendChild(dateItem);
-      }
-    }
-
-    // 日付選択
-    function selectDate(date, element) {
-      document.querySelectorAll('.date-item').forEach(item => {
-        item.classList.remove('selected');
-      });
-      element.classList.add('selected');
-      
-      selectedDate = date;
-      loadTimeSlots(date);
-      document.getElementById('timePicker').style.display = 'block';
-    }
-
-    // 時間枠読み込み
-    async function loadTimeSlots(date) {
-      const timeGrid = document.getElementById('timeGrid');
-      timeGrid.innerHTML = '';
-      
-      // 営業時間: 10:00-19:00（30分刻み）
-      const timeSlots = [];
-      for (let hour = 10; hour < 19; hour++) {
-        for (let min = 0; min < 60; min += 30) {
-          timeSlots.push({
-            hour: hour,
-            minute: min,
-            display: `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`
-          });
-        }
-      }
-      
-      // 既存予約をチェック
-      const reservedSlots = await getReservedSlots(date);
-      
-      timeSlots.forEach(slot => {
-        const slotTime = new Date(date);
-        slotTime.setHours(slot.hour, slot.minute, 0, 0);
-        
-        const timeItem = document.createElement('div');
-        timeItem.className = 'time-slot';
-        timeItem.textContent = slot.display;
-        
-        // 予約済みかチェック
-        const isReserved = reservedSlots.some(reserved => {
-          const reservedTime = new Date(reserved);
-          return Math.abs(slotTime.getTime() - reservedTime.getTime()) < selectedMenu.duration * 60000;
-        });
-        
-        // 過去の時間かチェック
-        const isPast = slotTime <= new Date();
-        
-        if (isReserved || isPast) {
-          timeItem.classList.add('disabled');
-        } else {
-          timeItem.onclick = () => selectTime(slotTime, timeItem);
-        }
-        
-        timeGrid.appendChild(timeItem);
-      });
-    }
-
-    // 予約済み時間枠取得
-    async function getReservedSlots(date) {
-      try {
-        const startOfDay = new Date(date);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(date);
-        endOfDay.setHours(23, 59, 59, 999);
-        
-        const snapshot = await db.collection("reservations")
-          .where("staffId", "==", selectedStaff.id)
-          .where("datetime", ">=", startOfDay.toISOString())
-          .where("datetime", "<=", endOfDay.toISOString())
-          .get();
-        
-        const reserved = [];
-        snapshot.forEach(doc => {
-          reserved.push(doc.data().datetime);
-        });
-        
-        return reserved;
-      } catch (error) {
-        console.error("予約確認エラー:", error);
-        return [];
-      }
-    }
-
-    // 時間選択
-    function selectTime(time, element) {
-      document.querySelectorAll('.time-slot').forEach(item => {
-        item.classList.remove('selected');
-      });
-      element.classList.add('selected');
-      
-      selectedTime = time;
-      document.getElementById('datetimeNextBtn').style.display = 'block';
-      document.getElementById('datetimeNextBtn').disabled = false;
-    }
-
-    // 確認画面読み込み
-    function loadConfirmation() {
-      // 予約サマリー更新
-      document.getElementById('summaryMenu').textContent = selectedMenu.name;
-      document.getElementById('summaryStaff').textContent = selectedStaff.name;
-      document.getElementById('summaryDatetime').textContent = 
-        selectedTime.toLocaleDateString('ja-JP', { 
-          month: 'long', 
-          day: 'numeric', 
-          weekday: 'long' 
-        }) + ' ' + 
-        selectedTime.toLocaleTimeString('ja-JP', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        });
-      document.getElementById('summaryPrice').textContent = `¥${selectedMenu.price.toLocaleString()}`;
-      
-      // 顧客フォーム表示制御
-      if (isExistingCustomer) {
-        document.getElementById('customerForm').style.display = 'none';
-        document.getElementById('existingCustomerNote').style.display = 'block';
-      } else {
-        document.getElementById('customerForm').style.display = 'block';
-        document.getElementById('existingCustomerNote').style.display = 'none';
-        // LINE名を初期値に設定
-        document.getElementById('customerName').value = userName || '';
-      }
-    }
-
-    // 予約確定
-    async function submitBooking() {
-      const submitBtn = document.getElementById('bookingSubmitBtn');
-      submitBtn.disabled = true;
-      submitBtn.textContent = '予約中...';
-      
-      try {
-        let customerName = userName;
-        let customerPhone = '';
-        let note = '';
-        
-        if (isExistingCustomer) {
-          note = document.getElementById('returnCustomerNote').value.trim();
-        } else {
-          customerName = document.getElementById('customerName').value.trim();
-          customerPhone = document.getElementById('customerPhone').value.trim();
-          note = document.getElementById('customerNote').value.trim();
-          
-          if (!customerName || !customerPhone) {
-            throw new Error('お名前と電話番号を入力してください');
-          }
-        }
-        
-        // 予約データ作成
-        const reservationData = {
-          userId: userId,
-          name: customerName,
-          phone: customerPhone,
-          menuId: selectedMenu.id,
-          menuName: selectedMenu.name,
-          price: selectedMenu.price,
-          duration: selectedMenu.duration,
-          staffId: selectedStaff.id,
-          staffName: selectedStaff.name,
-          datetime: selectedTime.toISOString(),
-          note: note,
-          status: 'confirmed',
-          createdAt: new Date().toISOString()
-        };
-        
-        // Firestoreに予約保存
-        await db.collection("reservations").add(reservationData);
-        
-        // 顧客データ更新
-        const customerRef = db.collection("customers").doc(userId);
-        const customerDoc = await customerRef.get();
-        
-        if (customerDoc.exists) {
-          // 既存顧客：来店履歴に追加
-          const customerData = customerDoc.data();
-          const reservations = customerData.reservations || [];
-          reservations.push({
-            menu: selectedMenu.name,
-            datetime: selectedTime.toISOString(),
-            staff: selectedStaff.name,
-            price: selectedMenu.price
-          });
-          await customerRef.update({ reservations: reservations });
-        } else {
-          // 新規顧客：顧客データ作成
-          await customerRef.set({
-            userId: userId,
-            name: customerName,
-            phone: customerPhone,
-            createdAt: new Date().toISOString(),
-            reservations: [{
-              menu: selectedMenu.name,
-              datetime: selectedTime.toISOString(),
-              staff: selectedStaff.name,
-              price: selectedMenu.price
-            }],
-            tags: ['新規顧客'], // タグ機能
-            totalVisits: 1,
-            totalSpent: selectedMenu.price
-          });
-        }
-        
-        // 予約完了画面に遷移
-        showBookingSuccess();
-        
-      } catch (error) {
-        console.error('予約エラー:', error);
-        showError('予約の確定に失敗しました: ' + error.message);
-        submitBtn.disabled = false;
-        submitBtn.textContent = '予約を確定する';
-      }
-    }
-
-    // 予約成功画面表示
-    function showBookingSuccess() {
-      document.querySelector('.container').innerHTML = `
-        <div class="header">
-          <h1>💇‍♀️ Salone Ponte</h1>
-          <p>ご予約ありがとうございます</p>
-        </div>
-        <div style="padding: 40px 20px; text-align: center;">
-          <div style="font-size: 64px; margin-bottom: 20px;">✅</div>
-          <h2 style="color: #ff5722; margin-bottom: 20px;">予約が確定しました！</h2>
-          
-          <div class="booking-summary" style="margin: 30px 0;">
-            <div class="summary-row">
-              <div class="summary-label">メニュー</div>
-              <div class="summary-value">${selectedMenu.name}</div>
-            </div>
-            <div class="summary-row">
-              <div class="summary-label">担当スタッフ</div>
-              <div class="summary-value">${selectedStaff.name}</div>
-            </div>
-            <div class="summary-row">
-              <div class="summary-label">日時</div>
-              <div class="summary-value">${selectedTime.toLocaleDateString('ja-JP', { 
-                month: 'long', 
-                day: 'numeric', 
-                weekday: 'long' 
-              })} ${selectedTime.toLocaleTimeString('ja-JP', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              })}</div>
-            </div>
-            <div class="summary-row">
-              <div class="summary-label">料金</div>
-              <div class="summary-value total-price">¥${selectedMenu.price.toLocaleString()}</div>
-            </div>
-          </div>
-          
-          <p style="color: #666; margin-bottom: 30px;">
-            確認のLINEメッセージをお送りしました。<br>
-            ご来店をお待ちしております！
-          </p>
-          
-          <button onclick="window.location.href='index.html'" class="btn btn-primary">
-            新しい予約をする
-          </button>
-          
-          <button onclick="window.location.href='dashboard.html'" class="btn btn-secondary">
-            マイページを見る
-          </button>
-        </div>
-      `;
-      
-      updateProgress(100);
-    }
-  </script>
-</body>
-</html>
