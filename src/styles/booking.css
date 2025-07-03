@@ -1,0 +1,429 @@
+/* 予約システム専用スタイル - Salone Ponte */
+
+/* ヘッダー */
+.header {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff5722 100%);
+  color: white;
+  padding: 20px;
+  text-align: center;
+  position: relative;
+}
+
+.header h1 {
+  font-size: 24px;
+  margin-bottom: 5px;
+}
+
+.header p {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+/* プログレス */
+.progress {
+  background: rgba(255,255,255,0.2);
+  height: 4px;
+  margin-top: 15px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  background: white;
+  height: 100%;
+  transition: width 0.3s ease;
+  border-radius: 2px;
+}
+
+/* ステップ表示 */
+.steps {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  background: #fff8f0;
+  border-bottom: 1px solid #ffe0b3;
+}
+
+.step {
+  flex: 1;
+  text-align: center;
+  position: relative;
+}
+
+.step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 15px;
+  right: -50%;
+  width: 100%;
+  height: 2px;
+  background: #ddd;
+}
+
+.step.active .step-number {
+  background: #ff5722;
+  color: white;
+}
+
+.step.completed .step-number {
+  background: #4caf50;
+  color: white;
+}
+
+.step.completed::after {
+  background: #4caf50;
+}
+
+.step-number {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #ddd;
+  color: #666;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.step-label {
+  font-size: 12px;
+  color: #666;
+}
+
+/* セクション共通 */
+.section {
+  display: none;
+  padding: 20px;
+}
+
+.section.active {
+  display: block;
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  color: #333;
+  text-align: center;
+}
+
+/* メニュー選択 */
+.menu-grid {
+  display: grid;
+  gap: 15px;
+}
+
+.menu-item {
+  border: 2px solid #f0f0f0;
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.menu-item:hover {
+  border-color: #ff5722;
+  box-shadow: 0 4px 12px rgba(255,87,34,0.15);
+}
+
+.menu-item.selected {
+  border-color: #ff5722;
+  background: #fff3f0;
+}
+
+.menu-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.menu-image {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  object-fit: cover;
+  margin-right: 15px;
+}
+
+.menu-info h3 {
+  font-size: 18px;
+  margin-bottom: 5px;
+  color: #333;
+}
+
+.menu-price {
+  font-size: 20px;
+  font-weight: bold;
+  color: #ff5722;
+}
+
+.menu-duration {
+  color: #666;
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+.menu-description {
+  color: #666;
+  font-size: 14px;
+  margin-top: 10px;
+  line-height: 1.5;
+}
+
+/* スタッフ選択 */
+.staff-grid {
+  display: grid;
+  gap: 15px;
+}
+
+.staff-item {
+  border: 2px solid #f0f0f0;
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.staff-item:hover {
+  border-color: #ff5722;
+  box-shadow: 0 4px 12px rgba(255,87,34,0.15);
+}
+
+.staff-item.selected {
+  border-color: #ff5722;
+  background: #fff3f0;
+}
+
+.staff-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.staff-image {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 15px;
+}
+
+.staff-info h3 {
+  font-size: 18px;
+  margin-bottom: 5px;
+  color: #333;
+}
+
+.staff-role {
+  color: #ff5722;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.staff-specialty {
+  color: #666;
+  font-size: 14px;
+  margin-top: 10px;
+  line-height: 1.5;
+}
+
+/* 日時選択 */
+.datetime-section {
+  margin-bottom: 30px;
+}
+
+.date-picker {
+  margin-bottom: 25px;
+}
+
+.calendar-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.calendar-nav button {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.calendar-nav button:hover {
+  background: #e9ecef;
+}
+
+.calendar-month {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.date-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.date-header {
+  text-align: center;
+  font-size: 12px;
+  font-weight: bold;
+  color: #666;
+  padding: 8px 0;
+}
+
+.date-item {
+  aspect-ratio: 1;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+  font-size: 14px;
+  position: relative;
+}
+
+.date-item:hover {
+  border-color: #ff5722;
+  background: #fff3f0;
+}
+
+.date-item.selected {
+  background: #ff5722;
+  color: white;
+  border-color: #ff5722;
+}
+
+.date-item.disabled {
+  background: #f5f5f5;
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+.date-item.other-month {
+  color: #ccc;
+}
+
+.date-item.today {
+  background: #e3f2fd;
+  border-color: #2196f3;
+  font-weight: bold;
+}
+
+.time-picker {
+  margin-top: 20px;
+}
+
+.time-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.time-slot {
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.time-slot:hover {
+  border-color: #ff5722;
+  background: #fff3f0;
+}
+
+.time-slot.selected {
+  background: #ff5722;
+  color: white;
+  border-color: #ff5722;
+}
+
+.time-slot.disabled {
+  background: #f5f5f5;
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+/* 確認画面 */
+.booking-summary {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.summary-row:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.summary-label {
+  color: #666;
+  font-weight: 500;
+}
+
+.summary-value {
+  font-weight: bold;
+  color: #333;
+}
+
+.total-price {
+  font-size: 24px;
+  color: #ff5722;
+}
+
+/* レスポンシブ */
+@media (max-width: 480px) {
+  .header {
+    padding: 15px;
+  }
+
+  .header h1 {
+    font-size: 20px;
+  }
+
+  .section {
+    padding: 15px;
+  }
+
+  .menu-header,
+  .staff-header {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .menu-image,
+  .staff-image {
+    margin: 0 0 10px 0;
+  }
+
+  .time-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

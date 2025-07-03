@@ -1,0 +1,46 @@
+{
+  "name": "salone-ponte-liff",
+  "version": "1.0.0",
+  "description": "Salone Ponte - LINE LIFF予約システム",
+  "main": "index.html",
+  "scripts": {
+    "dev": "serve -s . -p 3000 --cors",
+    "dev:liff": "serve -s src/pages -p 3001 --cors",
+    "dev:dashboard": "serve -s src/pages -p 3002 --cors",
+    "build": "npm run clean && npm run build:pages && npm run build:assets",
+    "build:pages": "mkdir -p dist && cp -r src/pages/* dist/",
+    "build:assets": "cp -r src/assets dist/ 2>/dev/null || true && cp src/manifest.json dist/ 2>/dev/null || true && cp src/sw.js dist/ 2>/dev/null || true",
+    "preview": "serve -s dist -p 3003",
+    "clean": "rm -rf dist && mkdir -p dist",
+    "start": "npm run dev",
+    "test": "echo 'No tests specified' && exit 0",
+    "lint": "echo 'No linting configured' && exit 0"
+  },
+  "keywords": [
+    "liff",
+    "salon",
+    "booking",
+    "firebase",
+    "line",
+    "pwa"
+  ],
+  "author": "Salone Ponte",
+  "license": "MIT",
+  "dependencies": {
+    "firebase": "^9.23.0"
+  },
+  "devDependencies": {
+    "serve": "^14.2.1",
+    "http-server": "^14.1.1",
+    "live-server": "^1.2.2"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}
