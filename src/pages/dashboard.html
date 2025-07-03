@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>Salone Ponte 統合管理システム</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     .tab-active {
@@ -99,38 +99,38 @@
       <h2 class="text-xl font-bold mb-6">💇‍♀️ Salone Ponte</h2>
       <ul class="space-y-2">
         <li>
-          <button onclick="switchTab('dashboard')" class="nav-item w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition-colors">
+          <button data-tab="dashboard" class="nav-item w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition-colors">
             📊 ダッシュボード
           </button>
         </li>
         <li>
-          <button onclick="switchTab('customers')" class="nav-item w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition-colors">
+          <button data-tab="customers" class="nav-item w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition-colors">
             👥 顧客管理
           </button>
         </li>
         <li>
-          <button onclick="switchTab('reservations')" class="nav-item w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition-colors">
+          <button data-tab="reservations" class="nav-item w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition-colors">
             📅 予約管理
           </button>
         </li>
         <li>
-          <button onclick="switchTab('menu-staff')" class="nav-item w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition-colors">
+          <button data-tab="menu-staff" class="nav-item w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition-colors">
             ⚙️ メニュー・スタッフ
           </button>
         </li>
         <li>
-          <button onclick="switchTab('counseling')" class="nav-item w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition-colors">
+          <button data-tab="counseling" class="nav-item w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition-colors">
             📋 カウンセリング
           </button>
         </li>
         <li>
-          <button onclick="switchTab('messaging')" class="nav-item w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition-colors relative">
+          <button data-tab="messaging" class="nav-item w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition-colors relative">
             💬 メッセージ配信
             <span id="messageNotification" class="unread-badge hidden absolute top-1 right-1">0</span>
           </button>
         </li>
         <li>
-          <button onclick="switchTab('analytics')" class="nav-item w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition-colors">
+          <button data-tab="analytics" class="nav-item w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition-colors">
             📈 売上分析
           </button>
         </li>
@@ -974,11 +974,11 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   
   <!-- 設定ファイル読み込み -->
-  <script src="../config/constants.js"></script>
-  <script src="../config/firebase.js"></script>
+  <script src="/src/config/constants.js"></script>
+  <script src="/src/config/firebase.js"></script>
 
   <!-- JavaScript読み込み -->
-  <script src="../scripts/dashboard.js"></script>
+  <script src="/src/scripts/dashboard.js"></script>
   <script>
     // ダッシュボード固有の初期化コード
     window.addEventListener('load', function() {

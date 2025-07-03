@@ -340,9 +340,17 @@ function switchTab(tab) {
   
   // タブコンテンツの表示切り替え
   document.querySelectorAll('.tab-content').forEach(content => {
-    content.style.display = 'none';
+    content.classList.add('hidden');
   });
-  document.getElementById(tab + 'Tab').style.display = 'block';
+  
+  // タブ名をIDに変換
+  let tabId = tab + 'Tab';
+  if (tab === 'menu-staff') tabId = 'menuStaffTab';
+  
+  const targetTab = document.getElementById(tabId);
+  if (targetTab) {
+    targetTab.classList.remove('hidden');
+  }
   
   // タブ固有の処理
   switch(tab) {
