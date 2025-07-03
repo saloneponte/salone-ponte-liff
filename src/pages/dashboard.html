@@ -969,110 +969,22 @@
     </div>
   </div>
 
-  <!-- Firebase SDK（サンプル - 実際のプロジェクトではFirebase設定が必要） -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  
+  <!-- 設定ファイル読み込み -->
+  <script src="../config/constants.js"></script>
+  <script src="../config/firebase.js"></script>
 
+  <!-- JavaScript読み込み -->
+  <script src="../scripts/dashboard.js"></script>
   <script>
-    // ===== Firebase 初期化（サンプル設定） =====
-    const firebaseConfig = {
-      // 実際のプロジェクトでは適切なFirebase設定を使用
-      apiKey: "demo-key",
-      authDomain: "demo.firebaseapp.com",
-      projectId: "demo-project"
-    };
-    
-    // Firebase初期化（デモ用の設定）
-    try {
-      firebase.initializeApp(firebaseConfig);
-      window.db = firebase.firestore();
-    } catch (error) {
-      console.log('Firebase Demo Mode');
-      // デモモード用のモックDB
-      window.db = {
-        collection: () => ({
-          get: () => Promise.resolve({ forEach: () => {} }),
-          add: () => Promise.resolve({ id: 'demo' + Date.now() }),
-          doc: () => ({
-            get: () => Promise.resolve({ exists: false, data: () => ({}) }),
-            set: () => Promise.resolve(),
-            update: () => Promise.resolve(),
-            delete: () => Promise.resolve()
-          })
-        })
-      };
-    }
-
-    // ===== グローバル変数 =====
-    let currentTab = 'dashboard';
-    let customersData = [];
-    let menusData = [];
-    let staffsData = [];
-    let reservationsData = [];
-    let messagesData = [];
-    let currentCustomer = null;
-    let currentMenu = null;
-    let currentStaff = null;
-    let selectedChatCustomer = null;
-
-    // ===== 初期化 =====
-    document.addEventListener('DOMContentLoaded', function() {
-      initializeData();
-      setupEventListeners();
-      loadDashboard();
+    // ダッシュボード固有の初期化コード
+    window.addEventListener('load', function() {
+      // リアルタイム更新を開始
+      setupRealtimeUpdates();
     });
-
-    function initializeData() {
-      // デモデータ初期化
-      customersData = [
-        {
-          id: 'customer1',
-          name: '田中 花子',
-          phone: '090-1234-5678',
-          totalVisits: 5,
-          totalSpent: 25000,
-          lastVisit: new Date('2024-11-15'),
-          daysSinceLastVisit: 38,
-          tags: ['常連顧客'],
-          birthday: '1990-03-15',
-          counseling: {
-            hairType: 'ウェーブ',
-            hairVolume: '普通',
-            concerns: ['パサつき', 'うねり'],
-            desiredStyle: 'ナチュラルなボブスタイル',
-            completedAt: '2024-10-01'
-          },
-          reservations: [
-            { datetime: '2024-11-15T14:00:00', menu: 'カット＋カラー', staff: '山田', price: 8000 },
-            { datetime: '2024-09-10T15:30:00', menu: 'カット', staff: '田中', price: 5000 }
-          ]
-        },
-        {
-          id: 'customer2',
-          name: '佐藤 太郎',
-          phone: '080-9876-5432',
-          totalVisits: 1,
-          totalSpent: 3000,
-          lastVisit: new Date('2024-12-01'),
-          daysSinceLastVisit: 21,
-          tags: ['新規顧客'],
-          birthday: '1985-07-22',
-          reservations: [
-            { datetime: '2024-12-01T10:00:00', menu: 'カット', staff: '山田', price: 3000 }
-          ]
-        },
-        {
-          id: 'customer3',
-          name: '鈴木 美咲',
-          phone: '070-1111-2222',
-          totalVisits: 12,
-          totalSpent: 80000,
-          lastVisit: new Date('2024-08-15'),
-          daysSinceLastVisit: 130,
-          tags: ['VIP顧客', '離反リスク'],
-          birthday: '1988-12-03',
-          counseling: {
-            hairType: 'ストレート',
-            hairVolume: '多い',
-            concerns: ['白髪', 'ボリューム不足'],
-            desiredStyle: '上品なミディアムス
+  </script>
+</body>
+</html>
