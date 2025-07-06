@@ -50,6 +50,11 @@
     <!-- ヘッダー -->
     <div class="flex justify-between items-center mb-8">
       <div>
+        <div class="flex items-center gap-4 mb-2">
+          <button onclick="history.back()" class="text-gray-500 hover:text-gray-700">
+            ← ダッシュボードに戻る
+          </button>
+        </div>
         <h1 class="text-3xl font-bold text-gray-800">👥 顧客管理</h1>
         <p class="text-gray-600">カルテ・タグ・施術履歴管理</p>
       </div>
@@ -378,6 +383,9 @@
 
       // CSV出力
       document.getElementById('exportBtn').addEventListener('click', exportToCSV);
+      
+      // 新規顧客追加
+      document.getElementById('addCustomerBtn').addEventListener('click', openNewCustomerModal);
     }
 
     // 顧客データ読み込み
@@ -940,6 +948,63 @@
       link.href = URL.createObjectURL(blob);
       link.download = `顧客一覧_${new Date().toISOString().split('T')[0]}.csv`;
       link.click();
+    }
+
+    // 新規顧客追加モーダル
+    function openNewCustomerModal() {
+      const name = prompt('お客様のお名前を入力してください');
+      if (!name) return;
+      
+      const phone = prompt('電話番号を入力してください');
+      if (!phone) return;
+      
+      createNewCustomer(name, phone);
+    }
+    
+    // 新規顧客作成
+    async function createNewCustomer(name, phone) {
+      try {
+        const newCustomer = {
+          name: name.trim(),
+          phone: phone.trim(),
+          createdAt: new Date().toISOString(),
+          tags: ['新規顧客'],
+          reservations: [],
+          notes: '',
+          allergies: '',
+          hairType: '',
+          hairVolume: '',
+          occupation: '',
+          birthday: '',
+          photos: [],
+          customerNotes: []
+        };
+        
+        const docRef = await db.collection('customers').add(newCustomer);
+        newCustomer.id = docRef.id;
+        
+        // ローカルデータに追加
+        customersData.push({
+          ...newCustomer,
+          totalVisits: 0,
+          totalSpent: 0,
+          lastVisit: null,
+          daysSinceLastVisit: null
+        });
+        
+        filteredCustomers = [...customersData];
+        renderCustomers();
+        updateStatistics();
+        
+        alert('新規顧客を追加しました');
+        
+        // 詳細編集のために即座にモーダルを開く
+        openCustomerModal(docRef.id);
+        
+      } catch (error) {
+        console.error('新規顧客作成エラー:', error);
+        alert('顧客の作成に失敗しました');
+      }
     }
 
     // グローバル関数として公開

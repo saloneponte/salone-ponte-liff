@@ -80,7 +80,8 @@ async function submitBooking() {
       note: customerNote,
       status: 'confirmed',
       createdAt: new Date().toISOString(),
-      lineUserId: userId
+      lineUserId: userId,
+      userId: userId
     };
 
     // Firebase に保存
@@ -128,8 +129,8 @@ async function submitBooking() {
       console.log('管理システムへの連携に失敗:', error);
     }
 
-    // 予約完了メッセージをLINEに送信
-    await sendConfirmationMessage(reservationData);
+    // 予約完了メッセージをLINEに送信（Firebase Cloud Functionsで自動実行）
+    // sendReservationConfirmation関数が新しい予約作成時に自動で実行される
 
     // 成功処理
     updateProgress(UI_CONFIG.PROGRESS_STEPS.COMPLETE.percent);

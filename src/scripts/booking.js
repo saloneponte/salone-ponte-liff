@@ -59,13 +59,13 @@ function setupEventListeners() {
   document.getElementById('confirmBackBtn').onclick = () => goToStep(3);
   
   // カレンダーナビゲーション
-  document.getElementById('prevMonthBtn').onclick = () => {
+  document.getElementById('prevMonthBtn').onclick = async () => {
     currentDisplayMonth.setMonth(currentDisplayMonth.getMonth() - 1);
-    renderCalendar();
+    await renderCalendar();
   };
-  document.getElementById('nextMonthBtn').onclick = () => {
+  document.getElementById('nextMonthBtn').onclick = async () => {
     currentDisplayMonth.setMonth(currentDisplayMonth.getMonth() + 1);
-    renderCalendar();
+    await renderCalendar();
   };
   
   // 予約確定
@@ -73,7 +73,7 @@ function setupEventListeners() {
 }
 
 // ステップ移動
-function goToStep(step) {
+async function goToStep(step) {
   // 現在のステップを完了マークに
   if (currentStep < step) {
     document.getElementById(`step${currentStep}`).classList.add('completed');
@@ -98,7 +98,7 @@ function goToStep(step) {
     updateProgress(progressConfig.STAFF.percent);
   } else if (step === 3) {
     document.getElementById('datetimeSection').classList.add('active');
-    renderCalendar();
+    await renderCalendar();
     updateProgress(progressConfig.DATETIME.percent);
   } else if (step === 4) {
     document.getElementById('confirmSection').classList.add('active');
@@ -112,12 +112,22 @@ function goToStep(step) {
 // メニュー読み込み
 async function loadMenus() {
   try {
-    const snapshot = await db.collection("menus").get();
+    const snapshot = await db.collection("menus")
+      .where("active", "!=", false)
+      .orderBy("order", "asc")
+      .get();
     menusData = [];
     snapshot.forEach(doc => {
+      const data = doc.data();
       menusData.push({
         id: doc.id,
-        ...doc.data()
+        ...data,
+        // 新しい項目をサポート
+        category: data.category || 'その他',
+        description: data.description || '',
+        photoURL: data.photoURL || data.mainPhotoURL || (data.photos && data.photos[0] && data.photos[0].url) || 'https://via.placeholder.com/300x200?text=No+Image',
+        popular: data.popular || false,
+        recommended: data.recommended || false
       });
     });
     
@@ -147,16 +157,24 @@ function renderMenus() {
   menusData.forEach(menu => {
     const item = document.createElement('div');
     item.className = 'menu-item';
+    
+    // バッジ表示
+    const badges = [];
+    if (menu.popular) badges.push('<span class="badge badge-popular">人気</span>');
+    if (menu.recommended) badges.push('<span class="badge badge-recommended">おすすめ</span>');
+    
     item.innerHTML = `
       <div class="menu-header">
-        <img src="${menu.photoURL || 'https://via.placeholder.com/60'}" 
+        <img src="${menu.photoURL}" 
              alt="${menu.name}" class="menu-image">
         <div class="menu-info">
           <h3>${menu.name}</h3>
           <div class="menu-price">¥${menu.price.toLocaleString()}</div>
+          ${badges.length > 0 ? `<div class="menu-badges">${badges.join('')}</div>` : ''}
         </div>
       </div>
       <div class="menu-duration">所要時間: ${menu.duration}分</div>
+      <div class="menu-category">${menu.category}</div>
       <div class="menu-description">${menu.description || ''}</div>
     `;
     
@@ -180,12 +198,23 @@ function selectMenu(menu, element) {
 // スタッフ読み込み
 async function loadStaffs() {
   try {
-    const snapshot = await db.collection("staffs").get();
+    const snapshot = await db.collection("staffs")
+      .where("active", "!=", false)
+      .orderBy("order", "asc")
+      .get();
     staffsData = [];
     snapshot.forEach(doc => {
+      const data = doc.data();
       staffsData.push({
         id: doc.id,
-        ...doc.data()
+        ...data,
+        // 新しい項目をサポート
+        role: data.role || 'スタイリスト',
+        specialty: data.specialty || '',
+        photoURL: data.photoURL || data.mainPhotoURL || (data.photos && data.photos[0] && data.photos[0].url) || 'https://via.placeholder.com/200x200?text=No+Image',
+        skills: data.skills || [],
+        experience: data.experience || '',
+        introduction: data.introduction || ''
       });
     });
     
@@ -211,16 +240,24 @@ function renderStaffs() {
   staffsData.forEach(staff => {
     const item = document.createElement('div');
     item.className = 'staff-item';
+    
+    // スキルタグ表示
+    const skillTags = staff.skills && staff.skills.length > 0 ? 
+      staff.skills.slice(0, 3).map(skill => `<span class="skill-tag">${skill}</span>`).join('') : '';
+    
     item.innerHTML = `
       <div class="staff-header">
-        <img src="${staff.photoURL || 'https://via.placeholder.com/60'}" 
+        <img src="${staff.photoURL}" 
              alt="${staff.name}" class="staff-image">
         <div class="staff-info">
           <h3>${staff.name}</h3>
-          <div class="staff-role">${staff.role || 'スタイリスト'}</div>
+          <div class="staff-role">${staff.role}</div>
+          ${staff.experience ? `<div class="staff-experience">${staff.experience}</div>` : ''}
         </div>
       </div>
-      <div class="staff-specialty">${staff.specialty || ''}</div>
+      <div class="staff-specialty">${staff.specialty}</div>
+      ${skillTags ? `<div class="staff-skills">${skillTags}</div>` : ''}
+      ${staff.introduction ? `<div class="staff-introduction">${staff.introduction}</div>` : ''}
     `;
     
     item.onclick = () => selectStaff(staff, item);

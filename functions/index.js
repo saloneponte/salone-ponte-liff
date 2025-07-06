@@ -1,4 +1,4 @@
-const functions = require('firebase-functions');
+const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { Client } = require('@line/bot-sdk');
 
@@ -18,7 +18,10 @@ exports.sendReservationConfirmation = functions.firestore
   .onCreate(async (snap, context) => {
     try {
       const reservation = snap.data();
-      const { userId, name, menuName, staffName, datetime, price } = reservation;
+      const { lineUserId, customerId, name, menuName, staffName, datetime, menuPrice } = reservation;
+      
+      // userIdフィールドの優先順位: lineUserId > customerId > userId（後方互換性）
+      const targetUserId = lineUserId || customerId || reservation.userId;
 
       // 日時フォーマット
       const reservationDate = new Date(datetime);
@@ -110,7 +113,7 @@ exports.sendReservationConfirmation = functions.firestore
                     layout: 'horizontal',
                     contents: [
                       { type: 'text', text: '料金', flex: 1, color: '#666666' },
-                      { type: 'text', text: `¥${price.toLocaleString()}`, flex: 2, weight: 'bold', color: '#007bff' }
+                      { type: 'text', text: `¥${menuPrice.toLocaleString()}`, flex: 2, weight: 'bold', color: '#007bff' }
                     ],
                     margin: 'sm'
                   }
@@ -146,7 +149,7 @@ exports.sendReservationConfirmation = functions.firestore
       };
 
       // 顧客に通知送信
-      await client.pushMessage(userId, customerMessage);
+      await client.pushMessage(targetUserId, customerMessage);
 
       // スタッフ通知用のデータを取得
       const staffDoc = await db.collection('staffs').doc(reservation.staffId).get();

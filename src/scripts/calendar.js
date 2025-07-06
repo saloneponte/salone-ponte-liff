@@ -1,7 +1,7 @@
 // カレンダー・日時選択機能 - Salone Ponte
 
 // カレンダー表示（今日基準に修正）
-function renderCalendar() {
+async function renderCalendar() {
   const grid = document.getElementById('calendarGrid');
   // 曜日ヘッダーを保持
   const headers = grid.querySelectorAll('.date-header');
@@ -24,6 +24,9 @@ function renderCalendar() {
   // 今日の日付（時間を0にリセット）
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
+  // 月全体の空き状況を取得
+  const monthAvailability = await getMonthAvailability(year, month);
 
   for (let i = 0; i < 42; i++) {
     const date = new Date(startDate);
@@ -53,9 +56,31 @@ function renderCalendar() {
       dateItem.classList.add('selected');
     }
     
-    // クリックイベント（有効な日付のみ）
+    // 空き状況表示（有効な日付のみ）
     if (!dateItem.classList.contains('disabled') && !dateItem.classList.contains('other-month')) {
-      dateItem.onclick = () => selectDate(date, dateItem);
+      const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const availability = monthAvailability[dateKey] || { status: 'available', count: 0 };
+      
+      const statusElement = document.createElement('div');
+      statusElement.className = `availability-status ${availability.status}`;
+      
+      if (availability.status === 'available') {
+        statusElement.textContent = '○';
+        statusElement.title = '空きあり';
+      } else if (availability.status === 'limited') {
+        statusElement.textContent = '△';
+        statusElement.title = '残りわずか';
+      } else if (availability.status === 'busy') {
+        statusElement.textContent = '×';
+        statusElement.title = '予約満了';
+      }
+      
+      dateItem.appendChild(statusElement);
+      
+      // クリックイベント（満了でなければ）
+      if (availability.status !== 'busy') {
+        dateItem.onclick = () => selectDate(date, dateItem);
+      }
     }
     
     grid.appendChild(dateItem);
@@ -141,4 +166,51 @@ function selectTime(time, element) {
   selectedTime = time;
   document.getElementById('datetimeNextBtn').style.display = 'block';
   document.getElementById('datetimeNextBtn').disabled = false;
+}
+
+// 月全体の空き状況を取得
+async function getMonthAvailability(year, month) {
+  if (!selectedStaff) return {};
+  
+  try {
+    const startOfMonth = new Date(year, month, 1);
+    const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59);
+    
+    const snapshot = await db.collection("reservations")
+      .where("staffId", "==", selectedStaff.id)
+      .where("datetime", ">=", startOfMonth.toISOString())
+      .where("datetime", "<=", endOfMonth.toISOString())
+      .get();
+    
+    const dailyReservations = {};
+    snapshot.forEach(doc => {
+      const reservation = doc.data();
+      const reservationDate = new Date(reservation.datetime);
+      const dateKey = `${reservationDate.getFullYear()}-${String(reservationDate.getMonth() + 1).padStart(2, '0')}-${String(reservationDate.getDate()).padStart(2, '0')}`;
+      
+      if (!dailyReservations[dateKey]) {
+        dailyReservations[dateKey] = 0;
+      }
+      dailyReservations[dateKey]++;
+    });
+    
+    // 空き状況を判定
+    const availability = {};
+    const maxSlotsPerDay = BUSINESS_HOURS.length; // 営業時間枠数
+    
+    for (const [dateKey, count] of Object.entries(dailyReservations)) {
+      if (count >= maxSlotsPerDay) {
+        availability[dateKey] = { status: 'busy', count };
+      } else if (count >= maxSlotsPerDay * 0.7) {
+        availability[dateKey] = { status: 'limited', count };
+      } else {
+        availability[dateKey] = { status: 'available', count };
+      }
+    }
+    
+    return availability;
+  } catch (error) {
+    console.error("空き状況取得エラー:", error);
+    return {};
+  }
 }
