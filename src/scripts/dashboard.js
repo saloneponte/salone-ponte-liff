@@ -1328,18 +1328,6 @@ function toggleSideNav() {
   }
 }
 
-function closeSideNav() {
-  const sideNav = document.getElementById('sideNav');
-  const menuOverlay = document.getElementById('menuOverlay');
-  
-  if (sideNav) {
-    sideNav.classList.remove('active');
-  }
-  if (menuOverlay) {
-    menuOverlay.classList.remove('active');
-  }
-}
-
 // プレースホルダー関数（今後実装予定）
 function openMenuModal() { alert('メニュー追加機能は実装予定です'); }
 function openStaffModal() { alert('スタッフ追加機能は実装予定です'); }
