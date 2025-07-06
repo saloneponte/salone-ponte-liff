@@ -4,10 +4,11 @@
   "description": "Salone Ponte - LINE LIFF予約システム",
   "main": "index.html",
   "scripts": {
-    "dev": "serve -s . -p 3000 --cors",
+    "dev": "npm run build:css && serve -s . -p 3000 --cors",
     "dev:liff": "serve -s src/pages -p 3001 --cors",
     "dev:dashboard": "serve -s src/pages -p 3002 --cors",
-    "build": "npm run clean && npm run build:pages && npm run build:assets",
+    "build": "npm run clean && npm run build:css && npm run build:pages && npm run build:assets",
+    "build:css": "tailwindcss -i ./src/styles/tailwind.css -o ./src/styles/tailwind-compiled.css --watch=false",
     "build:pages": "mkdir -p dist && cp -r src/pages/* dist/",
     "build:assets": "cp -r src/assets dist/ 2>/dev/null || true && cp src/manifest.json dist/ 2>/dev/null || true && cp src/sw.js dist/ 2>/dev/null || true",
     "preview": "serve -s dist -p 3003",
@@ -30,9 +31,10 @@
     "firebase": "^9.23.0"
   },
   "devDependencies": {
-    "serve": "^14.2.1",
     "http-server": "^14.1.1",
-    "live-server": "^1.2.2"
+    "live-server": "^1.2.2",
+    "serve": "^14.2.1",
+    "tailwindcss": "^3.4.17"
   },
   "engines": {
     "node": ">=16.0.0",
