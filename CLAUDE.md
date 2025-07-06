@@ -54,6 +54,121 @@ Phase 3 (1-2年): フルモダン化
 - **CDN活用**: 静的アセットの高速配信
 - **キャッシュ戦略**: Service Workerを活用したオフライン対応
 
+## 🛡️ セキュリティ・認証情報管理
+
+### 環境変数による認証情報の安全な管理
+
+#### 基本方針
+- **本番環境では全ての認証情報を環境変数で管理**
+- **開発環境ではフォールバック設定を提供**
+- **機密情報のソースコードへのハードコーディングを禁止**
+- **ログへの機密情報出力を防止**
+
+#### 環境変数設定手順
+
+1. **環境変数ファイルの作成**
+```bash
+# .env.example をコピーして .env を作成
+cp .env.example .env
+
+# 各項目を実際の値で設定
+vim .env
+```
+
+2. **主要な環境変数**
+```bash
+# LIFF関連（LINE Developers要確認）
+LIFF_ID=your_liff_id_here
+
+# LINE Messaging API
+LINE_CHANNEL_SECRET=your_channel_secret
+LINE_CHANNEL_ACCESS_TOKEN=your_access_token
+
+# Firebase設定
+FIREBASE_API_KEY=your_firebase_api_key
+FIREBASE_PROJECT_ID=your_project_id
+FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+
+# セキュリティ設定
+SECURE_MODE=true  # 本番環境では必須
+LOG_LEVEL=info    # 本番環境では debug 以外
+```
+
+3. **本番環境での設定**
+- Vercelの環境変数設定画面で全ての値を設定
+- GitHub Secretsに機密情報を保存
+- ローカル開発環境の .env は絶対にプッシュしない
+
+#### セキュリティ機能
+
+**自動バリデーション**
+- 必須項目の存在チェック
+- 本番環境での追加要件チェック
+- 認証情報の形式検証
+
+**安全な読み込み**
+```javascript
+// 環境設定の安全な取得
+const envConfig = getEnvConfig();
+const firebaseConfig = envConfig.getFirebaseConfig();
+const liffConfig = envConfig.getLIFFConfig();
+```
+
+**ログセキュリティ**
+- 機密情報（SECRET, TOKEN, KEY）のログ出力を自動的に防止
+- デバッグ情報は開発環境のみ出力
+- 本番環境では最小限のログレベル
+
+#### 環境別設定
+
+**開発環境**
+- フォールバック設定を提供
+- 詳細なデバッグ情報
+- 設定状態の可視化
+
+**本番環境**
+- 環境変数必須
+- セキュアモード強制
+- 最小限のログ出力
+
+#### セキュリティチェックリスト
+
+**コード側**
+- [ ] ハードコードされた認証情報がない
+- [ ] 環境変数を適切に読み込んでいる
+- [ ] エラー時のフォールバック処理が適切
+- [ ] ログに機密情報が含まれていない
+
+**デプロイ側**
+- [ ] .env ファイルが .gitignore に含まれている
+- [ ] 本番環境の環境変数が設定済み
+- [ ] LINE DevelopersでLIFF IDを確認済み
+- [ ] Firebase設定が最新
+
+**運用側**
+- [ ] 定期的な認証情報のローテーション
+- [ ] アクセスログの監視
+- [ ] 不要な権限の削除
+- [ ] セキュリティアップデートの適用
+
+### セキュリティベストプラクティス
+
+**認証情報管理**
+- 最小権限の原則
+- 定期的なローテーション
+- 用途別の権限分離
+- 監査ログの確保
+
+**アクセス制御**
+- Firebase Security Rulesの適切な設定
+- 不正アクセスの検知・ブロック
+- ユーザー認証の強化
+
+**データ保護**
+- 個人情報の暗号化
+- データベースアクセスの制限
+- バックアップデータの保護
+
 ## 🛡️ 安定性・セキュリティ重視の開発方針
 
 ### エラーハンドリングのベストプラクティス

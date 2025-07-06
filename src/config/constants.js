@@ -1,9 +1,37 @@
 // 定数・設定値 - Salone Ponte
 
-// LIFF設定
-const LIFF_CONFIG = {
-  LIFF_ID: "2007345180-oVA2L6dw"
-};
+// LIFF設定 - 環境変数対応
+let LIFF_CONFIG;
+
+try {
+  // 環境設定の初期化
+  const envConfig = typeof getEnvConfig !== 'undefined' ? getEnvConfig() : null;
+  
+  if (envConfig) {
+    // 環境変数からLIFF設定を取得
+    LIFF_CONFIG = envConfig.getLIFFConfig();
+    console.log('✅ LIFF設定を環境変数から読み込みました');
+  } else {
+    // フォールバック設定
+    console.warn('⚠️ 環境設定が利用できません。フォールバックLIFF設定を使用します。');
+    LIFF_CONFIG = {
+      LIFF_ID: "2007345180-oVA2L6dw"
+    };
+  }
+  
+  // LIFF ID検証
+  if (!LIFF_CONFIG.LIFF_ID) {
+    throw new Error('LIFF IDが設定されていません');
+  }
+  
+} catch (error) {
+  console.error('❌ LIFF設定エラー:', error.message);
+  
+  // デフォルト設定
+  LIFF_CONFIG = {
+    LIFF_ID: "2007345180-oVA2L6dw"
+  };
+}
 
 // 営業時間設定
 const BUSINESS_HOURS = [
