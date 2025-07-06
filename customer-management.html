@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>顧客管理 - Salone Ponte</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .tag {
+      @apply inline-block px-2 py-1 text-xs rounded-full;
+    }
+    .tag-vip { @apply bg-purple-100 text-purple-800; }
+    .tag-regular { @apply bg-green-100 text-green-800; }
+    .tag-new { @apply bg-blue-100 text-blue-800; }
+    .tag-risk { @apply bg-red-100 text-red-800; }
+    .tag-custom { @apply bg-gray-100 text-gray-800; }
+    
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px;
+    }
+    
+    .photo-item {
+      aspect-ratio: 1;
+      background: #f3f4f6;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+      cursor: pointer;
+    }
+    
+    .photo-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .modal {
+      @apply fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50;
+    }
+    
+    .modal.active {
+      @apply flex;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="container mx-auto px-4 py-6 max-w-7xl">
+    <!-- ヘッダー -->
+    <div class="flex justify-between items-center mb-8">
+      <div>
+        <div class="flex items-center gap-4 mb-2">
+          <button onclick="history.back()" class="text-gray-500 hover:text-gray-700">
+            ← ダッシュボードに戻る
+          </button>
+        </div>
+        <h1 class="text-3xl font-bold text-gray-800">👥 顧客管理</h1>
+        <p class="text-gray-600">カルテ・タグ・施術履歴管理</p>
+      </div>
+      <div class="flex space-x-3">
+        <button id="addCustomerBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+          + 新規顧客追加
+        </button>
+        <button id="exportBtn" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors">
+          📊 CSV出力
+        </button>
+      </div>
+    </div>
+
+    <!-- 検索・フィルター -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">顧客検索</label>
+          <input type="text" id="searchInput" placeholder="名前・電話番号で検索" 
+                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">タグで絞り込み</label>
+          <select id="tagFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">全て</option>
+            <option value="VIP顧客">VIP顧客</option>
+            <option value="常連顧客">常連顧客</option>
+            <option value="新規顧客">新規顧客</option>
+            <option value="離反リスク">離反リスク</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">来店期間</label>
+          <select id="visitFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">全期間</option>
+            <option value="30">30日以内</option>
+            <option value="60">60日以内</option>
+            <option value="90">90日以内</option>
+            <option value="180">180日以上</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button id="resetFilter" class="w-full bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">
+            リセット
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 統計サマリー -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+            👥
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600">総顧客数</p>
+            <p class="text-2xl font-semibold text-gray-900" id="totalCustomers">0</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-green-100 text-green-600">
+            🔄
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600">今月新規</p>
+            <p class="text-2xl font-semibold text-gray-900" id="newCustomers">0</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+            💎
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600">VIP顧客</p>
+            <p class="text-2xl font-semibold text-gray-900" id="vipCustomers">0</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-red-100 text-red-600">
+            ⚠️
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600">離反リスク</p>
+            <p class="text-2xl font-semibold text-gray-900" id="riskCustomers">0</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 顧客一覧 -->
+    <div class="bg-white rounded-lg shadow-md">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900">顧客一覧</h3>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">顧客情報</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">タグ</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">来店情報</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">累計金額</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最終来店</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+            </tr>
+          </thead>
+          <tbody id="customerTable" class="bg-white divide-y divide-gray-200">
+            <!-- 顧客データはJavaScriptで動的に生成 -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- カルテモーダル -->
+  <div id="customerModal" class="modal">
+    <div class="bg-white rounded-lg w-full max-w-4xl mx-4 max-h-full overflow-y-auto">
+      <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+        <h3 class="text-lg font-semibold text-gray-900" id="modalCustomerName">顧客カルテ</h3>
+        <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="p-6">
+        <!-- タブナビゲーション -->
+        <div class="flex border-b border-gray-200 mb-6">
+          <button class="tab-btn active px-4 py-2 text-sm font-medium border-b-2 border-blue-500 text-blue-600" data-tab="profile">
+            👤 基本情報
+          </button>
+          <button class="tab-btn px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-tab="history">
+            📋 施術履歴
+          </button>
+          <button class="tab-btn px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-tab="photos">
+            📷 施術写真
+          </button>
+          <button class="tab-btn px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-tab="notes">
+            📝 カルテメモ
+          </button>
+        </div>
+
+        <!-- 基本情報タブ -->
+        <div id="profileTab" class="tab-content">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h4 class="font-semibold mb-4">基本情報</h4>
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">お名前</label>
+                  <input type="text" id="editName" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">電話番号</label>
+                  <input type="tel" id="editPhone" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">生年月日</label>
+                  <input type="date" id="editBirthday" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">職業</label>
+                  <input type="text" id="editOccupation" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <h4 class="font-semibold mb-4">髪質・肌質情報</h4>
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">髪質</label>
+                  <select id="editHairType" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                    <option value="">選択してください</option>
+                    <option value="ストレート">ストレート</option>
+                    <option value="ウェーブ">ウェーブ</option>
+                    <option value="カール">カール</option>
+                    <option value="くせ毛">くせ毛</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">髪の量</label>
+                  <select id="editHairVolume" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                    <option value="">選択してください</option>
+                    <option value="少ない">少ない</option>
+                    <option value="普通">普通</option>
+                    <option value="多い">多い</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">アレルギー</label>
+                  <textarea id="editAllergies" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">特記事項</label>
+                  <textarea id="editNotes" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- タグ管理 -->
+          <div class="mt-6">
+            <h4 class="font-semibold mb-4">タグ管理</h4>
+            <div class="flex flex-wrap gap-2 mb-4" id="customerTags">
+              <!-- タグは動的に生成 -->
+            </div>
+            <div class="flex gap-2">
+              <input type="text" id="newTagInput" placeholder="新しいタグを入力" 
+                     class="flex-1 px-3 py-2 border border-gray-300 rounded-md">
+              <button id="addTagBtn" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
+                追加
+              </button>
+            </div>
+          </div>
+          
+          <div class="mt-6 flex justify-end">
+            <button id="saveProfileBtn" class="bg-green-500 text-white px-6 py-2 rounded-md hover:bg-green-600">
+              保存
+            </button>
+          </div>
+        </div>
+
+        <!-- 施術履歴タブ -->
+        <div id="historyTab" class="tab-content hidden">
+          <div class="space-y-4" id="treatmentHistory">
+            <!-- 施術履歴は動的に生成 -->
+          </div>
+        </div>
+
+        <!-- 施術写真タブ -->
+        <div id="photosTab" class="tab-content hidden">
+          <div class="mb-4">
+            <input type="file" id="photoUpload" accept="image/*" multiple class="hidden">
+            <button onclick="document.getElementById('photoUpload').click()" 
+                    class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
+              📷 写真をアップロード
+            </button>
+          </div>
+          <div class="photo-grid" id="customerPhotos">
+            <!-- 写真は動的に生成 -->
+          </div>
+        </div>
+
+        <!-- カルテメモタブ -->
+        <div id="notesTab" class="tab-content hidden">
+          <div class="mb-4">
+            <button id="addNoteBtn" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
+              📝 新規メモ追加
+            </button>
+          </div>
+          <div class="space-y-4" id="customerNotes">
+            <!-- メモは動的に生成 -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+
+  <script>
+    // Firebase 初期化
+    const firebaseConfig = {
+      apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
+      authDomain: "salone-ponte-fceca.firebaseapp.com",
+      projectId: "salone-ponte-fceca",
+      storageBucket: "salone-ponte-fceca.appspot.com",
+      messagingSenderId: "463711728652",
+      appId: "1:463711728652:web:59c749e11d201b26b86a29",
+      measurementId: "G-MPWGTB6R7C"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+
+    // グローバル変数
+    let customersData = [];
+    let currentCustomer = null;
+    let filteredCustomers = [];
+
+    // 初期化
+    document.addEventListener('DOMContentLoaded', function() {
+      loadCustomers();
+      setupEventListeners();
+    });
+
+    // イベントリスナー設定
+    function setupEventListeners() {
+      // 検索・フィルター
+      document.getElementById('searchInput').addEventListener('input', applyFilters);
+      document.getElementById('tagFilter').addEventListener('change', applyFilters);
+      document.getElementById('visitFilter').addEventListener('change', applyFilters);
+      document.getElementById('resetFilter').addEventListener('click', resetFilters);
+
+      // モーダル
+      document.getElementById('closeModal').addEventListener('click', closeModal);
+      
+      // タブ切り替え
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => switchTab(e.target.dataset.tab));
+      });
+
+      // プロフィール編集
+      document.getElementById('saveProfileBtn').addEventListener('click', saveCustomerProfile);
+      document.getElementById('addTagBtn').addEventListener('click', addCustomerTag);
+      
+      // 写真アップロード
+      document.getElementById('photoUpload').addEventListener('change', uploadPhotos);
+      
+      // メモ追加
+      document.getElementById('addNoteBtn').addEventListener('click', addCustomerNote);
+
+      // CSV出力
+      document.getElementById('exportBtn').addEventListener('click', exportToCSV);
+      
+      // 新規顧客追加
+      document.getElementById('addCustomerBtn').addEventListener('click', openNewCustomerModal);
+    }
+
+    // 顧客データ読み込み
+    async function loadCustomers() {
+      try {
+        const snapshot = await db.collection('customers').get();
+        customersData = [];
+        
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const reservations = data.reservations || [];
+          
+          // 統計計算
+          const totalVisits = reservations.length;
+          const totalSpent = reservations.reduce((sum, r) => sum + (r.price || 0), 0);
+          const lastVisit = reservations.length > 0 ? 
+            new Date(Math.max(...reservations.map(r => new Date(r.datetime).getTime()))) : null;
+          
+          // タグ自動判定
+          const autoTags = determineCustomerTags(totalSpent, totalVisits, lastVisit);
+          const existingTags = data.tags || [];
+          const allTags = [...new Set([...autoTags, ...existingTags])];
+          
+          customersData.push({
+            id: doc.id,
+            ...data,
+            totalVisits,
+            totalSpent,
+            lastVisit,
+            tags: allTags,
+            daysSinceLastVisit: lastVisit ? 
+              Math.floor((Date.now() - lastVisit.getTime()) / (1000 * 60 * 60 * 24)) : null
+          });
+        });
+        
+        filteredCustomers = [...customersData];
+        renderCustomers();
+        updateStatistics();
+        
+      } catch (error) {
+        console.error('顧客データ読み込みエラー:', error);
+        alert('顧客データの読み込みに失敗しました');
+      }
+    }
+
+    // 顧客タグ自動判定
+    function determineCustomerTags(totalSpent, totalVisits, lastVisit) {
+      const tags = [];
+      const daysSinceLastVisit = lastVisit ? 
+        Math.floor((Date.now() - lastVisit.getTime()) / (1000 * 60 * 60 * 24)) : 999;
+      
+      // VIP顧客
+      if (totalSpent >= 50000 && totalVisits >= 10) {
+        tags.push('VIP顧客');
+      }
+      // 常連顧客
+      else if (totalVisits >= 5 && daysSinceLastVisit <= 60) {
+        tags.push('常連顧客');
+      }
+      // 新規顧客
+      else if (totalVisits <= 2) {
+        tags.push('新規顧客');
+      }
+      
+      // 離反リスク
+      if (daysSinceLastVisit > 90) {
+        tags.push('離反リスク');
+      }
+      
+      return tags;
+    }
+
+    // 顧客一覧表示
+    function renderCustomers() {
+      const tbody = document.getElementById('customerTable');
+      tbody.innerHTML = '';
+
+      filteredCustomers.forEach(customer => {
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-gray-50 cursor-pointer';
+        
+        // タグ表示
+        const tagsHtml = customer.tags.slice(0, 3).map(tag => {
+          const tagClass = getTagClass(tag);
+          return `<span class="tag ${tagClass}">${tag}</span>`;
+        }).join(' ');
+        
+        const lastVisitText = customer.lastVisit ? 
+          customer.lastVisit.toLocaleDateString('ja-JP') + 
+          ` (${customer.daysSinceLastVisit}日前)` : '未来店';
+        
+        row.innerHTML = `
+          <td class="px-6 py-4 whitespace-nowrap">
+            <div class="flex items-center">
+              <div class="flex-shrink-0 h-10 w-10">
+                <div class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                  <span class="text-sm font-medium text-gray-700">${customer.name ? customer.name.charAt(0) : '?'}</span>
+                </div>
+              </div>
+              <div class="ml-4">
+                <div class="text-sm font-medium text-gray-900">${customer.name || '名前未設定'}</div>
+                <div class="text-sm text-gray-500">${customer.phone || '電話番号未設定'}</div>
+              </div>
+            </div>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap">
+            <div class="flex flex-wrap gap-1">${tagsHtml}</div>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            ${customer.totalVisits}回来店
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            ¥${customer.totalSpent.toLocaleString()}
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            ${lastVisitText}
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+            <button onclick="openCustomerModal('${customer.id}')" 
+                    class="text-blue-600 hover:text-blue-900">詳細</button>
+          </td>
+        `;
+        
+        tbody.appendChild(row);
+      });
+    }
+
+    // タグのCSSクラス取得
+    function getTagClass(tag) {
+      switch (tag) {
+        case 'VIP顧客': return 'tag-vip';
+        case '常連顧客': return 'tag-regular';
+        case '新規顧客': return 'tag-new';
+        case '離反リスク': return 'tag-risk';
+        default: return 'tag-custom';
+      }
+    }
+
+    // 統計更新
+    function updateStatistics() {
+      const total = customersData.length;
+      const thisMonth = new Date();
+      thisMonth.setDate(1);
+      
+      const newThisMonth = customersData.filter(c => 
+        c.createdAt && new Date(c.createdAt) >= thisMonth
+      ).length;
+      
+      const vip = customersData.filter(c => c.tags.includes('VIP顧客')).length;
+      const risk = customersData.filter(c => c.tags.includes('離反リスク')).length;
+      
+      document.getElementById('totalCustomers').textContent = total;
+      document.getElementById('newCustomers').textContent = newThisMonth;
+      document.getElementById('vipCustomers').textContent = vip;
+      document.getElementById('riskCustomers').textContent = risk;
+    }
+
+    // フィルター適用
+    function applyFilters() {
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      const tagFilter = document.getElementById('tagFilter').value;
+      const visitFilter = document.getElementById('visitFilter').value;
+      
+      filteredCustomers = customersData.filter(customer => {
+        // 検索フィルター
+        if (searchTerm) {
+          const nameMatch = (customer.name || '').toLowerCase().includes(searchTerm);
+          const phoneMatch = (customer.phone || '').toLowerCase().includes(searchTerm);
+          if (!nameMatch && !phoneMatch) return false;
+        }
+        
+        // タグフィルター
+        if (tagFilter && !customer.tags.includes(tagFilter)) {
+          return false;
+        }
+        
+        // 来店期間フィルター
+        if (visitFilter) {
+          const days = parseInt(visitFilter);
+          if (days === 180) {
+            // 180日以上来店していない
+            if (!customer.daysSinceLastVisit || customer.daysSinceLastVisit <= 180) {
+              return false;
+            }
+          } else {
+            // 指定日数以内に来店
+            if (!customer.daysSinceLastVisit || customer.daysSinceLastVisit > days) {
+              return false;
+            }
+          }
+        }
+        
+        return true;
+      });
+      
+      renderCustomers();
+    }
+
+    // フィルターリセット
+    function resetFilters() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('tagFilter').value = '';
+      document.getElementById('visitFilter').value = '';
+      filteredCustomers = [...customersData];
+      renderCustomers();
+    }
+
+    // 顧客詳細モーダル開く
+    function openCustomerModal(customerId) {
+      currentCustomer = customersData.find(c => c.id === customerId);
+      if (!currentCustomer) return;
+      
+      document.getElementById('modalCustomerName').textContent = 
+        `${currentCustomer.name || '名前未設定'} のカルテ`;
+      
+      loadCustomerProfile();
+      document.getElementById('customerModal').classList.add('active');
+      switchTab('profile');
+    }
+
+    // モーダル閉じる
+    function closeModal() {
+      document.getElementById('customerModal').classList.remove('active');
+      currentCustomer = null;
+    }
+
+    // タブ切り替え
+    function switchTab(tabName) {
+      // タブボタンの状態更新
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active', 'border-blue-500', 'text-blue-600');
+        btn.classList.add('text-gray-500');
+      });
+      
+      const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+      activeBtn.classList.add('active', 'border-blue-500', 'text-blue-600');
+      activeBtn.classList.remove('text-gray-500');
+      
+      // タブコンテンツの表示切り替え
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.add('hidden');
+      });
+      document.getElementById(`${tabName}Tab`).classList.remove('hidden');
+      
+      // タブ固有のデータ読み込み
+      switch (tabName) {
+        case 'history':
+          loadTreatmentHistory();
+          break;
+        case 'photos':
+          loadCustomerPhotos();
+          break;
+        case 'notes':
+          loadCustomerNotes();
+          break;
+      }
+    }
+
+    // 顧客プロフィール読み込み
+    function loadCustomerProfile() {
+      document.getElementById('editName').value = currentCustomer.name || '';
+      document.getElementById('editPhone').value = currentCustomer.phone || '';
+      document.getElementById('editBirthday').value = currentCustomer.birthday || '';
+      document.getElementById('editOccupation').value = currentCustomer.occupation || '';
+      document.getElementById('editHairType').value = currentCustomer.hairType || '';
+      document.getElementById('editHairVolume').value = currentCustomer.hairVolume || '';
+      document.getElementById('editAllergies').value = currentCustomer.allergies || '';
+      document.getElementById('editNotes').value = currentCustomer.notes || '';
+      
+      // タグ表示
+      renderCustomerTags();
+    }
+
+    // 顧客タグ表示
+    function renderCustomerTags() {
+      const container = document.getElementById('customerTags');
+      container.innerHTML = '';
+      
+      if (currentCustomer.tags) {
+        currentCustomer.tags.forEach(tag => {
+          const tagElement = document.createElement('span');
+          tagElement.className = `tag ${getTagClass(tag)} cursor-pointer`;
+          tagElement.innerHTML = `${tag} <span onclick="removeTag('${tag}')" class="ml-1 text-red-500">×</span>`;
+          container.appendChild(tagElement);
+        });
+      }
+    }
+
+    // タグ追加
+    function addCustomerTag() {
+      const newTag = document.getElementById('newTagInput').value.trim();
+      if (!newTag) return;
+      
+      if (!currentCustomer.tags) {
+        currentCustomer.tags = [];
+      }
+      
+      if (!currentCustomer.tags.includes(newTag)) {
+        currentCustomer.tags.push(newTag);
+        renderCustomerTags();
+        document.getElementById('newTagInput').value = '';
+      }
+    }
+
+    // タグ削除
+    function removeTag(tag) {
+      if (currentCustomer.tags) {
+        currentCustomer.tags = currentCustomer.tags.filter(t => t !== tag);
+        renderCustomerTags();
+      }
+    }
+
+    // プロフィール保存
+    async function saveCustomerProfile() {
+      try {
+        const updatedData = {
+          name: document.getElementById('editName').value.trim(),
+          phone: document.getElementById('editPhone').value.trim(),
+          birthday: document.getElementById('editBirthday').value,
+          occupation: document.getElementById('editOccupation').value.trim(),
+          hairType: document.getElementById('editHairType').value,
+          hairVolume: document.getElementById('editHairVolume').value,
+          allergies: document.getElementById('editAllergies').value.trim(),
+          notes: document.getElementById('editNotes').value.trim(),
+          tags: currentCustomer.tags || [],
+          updatedAt: new Date().toISOString()
+        };
+        
+        await db.collection('customers').doc(currentCustomer.id).update(updatedData);
+        
+        // ローカルデータ更新
+        Object.assign(currentCustomer, updatedData);
+        const index = customersData.findIndex(c => c.id === currentCustomer.id);
+        if (index !== -1) {
+          Object.assign(customersData[index], updatedData);
+        }
+        
+        alert('顧客情報を保存しました');
+        renderCustomers();
+        
+      } catch (error) {
+        console.error('保存エラー:', error);
+        alert('保存に失敗しました');
+      }
+    }
+
+    // 施術履歴読み込み
+    function loadTreatmentHistory() {
+      const container = document.getElementById('treatmentHistory');
+      container.innerHTML = '';
+      
+      if (!currentCustomer.reservations || currentCustomer.reservations.length === 0) {
+        container.innerHTML = '<p class="text-gray-500">施術履歴がありません</p>';
+        return;
+      }
+      
+      // 施術履歴を日付降順でソート
+      const sortedHistory = [...currentCustomer.reservations].sort((a, b) => 
+        new Date(b.datetime) - new Date(a.datetime)
+      );
+      
+      sortedHistory.forEach(treatment => {
+        const historyItem = document.createElement('div');
+        historyItem.className = 'bg-gray-50 rounded-lg p-4';
+        historyItem.innerHTML = `
+          <div class="flex justify-between items-start mb-2">
+            <h5 class="font-semibold">${treatment.menu}</h5>
+            <span class="text-sm text-gray-500">${new Date(treatment.datetime).toLocaleDateString('ja-JP')}</span>
+          </div>
+          <div class="text-sm text-gray-600">
+            <p>担当: ${treatment.staff}</p>
+            <p>料金: ¥${(treatment.price || 0).toLocaleString()}</p>
+            ${treatment.note ? `<p class="mt-2">${treatment.note}</p>` : ''}
+          </div>
+        `;
+        container.appendChild(historyItem);
+      });
+    }
+
+    // 施術写真読み込み
+    function loadCustomerPhotos() {
+      const container = document.getElementById('customerPhotos');
+      container.innerHTML = '';
+      
+      // 実装例：Firestoreから写真URLを取得
+      // 実際の実装では、顧客ごとの写真コレクションを作成
+      if (currentCustomer.photos && currentCustomer.photos.length > 0) {
+        currentCustomer.photos.forEach(photo => {
+          const photoItem = document.createElement('div');
+          photoItem.className = 'photo-item';
+          photoItem.innerHTML = `
+            <img src="${photo.url}" alt="施術写真" onclick="openPhotoModal('${photo.url}')">
+            <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1">
+              ${new Date(photo.date).toLocaleDateString('ja-JP')}
+            </div>
+          `;
+          container.appendChild(photoItem);
+        });
+      } else {
+        container.innerHTML = '<p class="text-gray-500 text-center col-span-full">写真がありません</p>';
+      }
+    }
+
+    // 写真アップロード
+    async function uploadPhotos(event) {
+      const files = Array.from(event.target.files);
+      if (files.length === 0) return;
+      
+      try {
+        const uploadPromises = files.map(async (file) => {
+          const fileName = `customers/${currentCustomer.id}/${Date.now()}_${file.name}`;
+          const storageRef = storage.ref().child(fileName);
+          const snapshot = await storageRef.put(file);
+          const downloadURL = await snapshot.ref.getDownloadURL();
+          
+          return {
+            url: downloadURL,
+            date: new Date().toISOString(),
+            fileName: file.name
+          };
+        });
+        
+        const uploadedPhotos = await Promise.all(uploadPromises);
+        
+        // Firestoreに写真情報を保存
+        const currentPhotos = currentCustomer.photos || [];
+        const updatedPhotos = [...currentPhotos, ...uploadedPhotos];
+        
+        await db.collection('customers').doc(currentCustomer.id).update({
+          photos: updatedPhotos
+        });
+        
+        currentCustomer.photos = updatedPhotos;
+        loadCustomerPhotos();
+        
+        alert('写真をアップロードしました');
+        
+      } catch (error) {
+        console.error('写真アップロードエラー:', error);
+        alert('写真のアップロードに失敗しました');
+      }
+    }
+
+    // カルテメモ読み込み
+    function loadCustomerNotes() {
+      const container = document.getElementById('customerNotes');
+      container.innerHTML = '';
+      
+      if (!currentCustomer.customerNotes || currentCustomer.customerNotes.length === 0) {
+        container.innerHTML = '<p class="text-gray-500">メモがありません</p>';
+        return;
+      }
+      
+      // メモを日付降順でソート
+      const sortedNotes = [...currentCustomer.customerNotes].sort((a, b) => 
+        new Date(b.createdAt) - new Date(a.createdAt)
+      );
+      
+      sortedNotes.forEach((note, index) => {
+        const noteItem = document.createElement('div');
+        noteItem.className = 'bg-gray-50 rounded-lg p-4';
+        noteItem.innerHTML = `
+          <div class="flex justify-between items-start mb-2">
+            <h5 class="font-semibold">${note.title || `メモ ${index + 1}`}</h5>
+            <div class="flex items-center gap-2">
+              <span class="text-sm text-gray-500">${new Date(note.createdAt).toLocaleDateString('ja-JP')}</span>
+              <button onclick="deleteNote(${index})" class="text-red-500 hover:text-red-700">削除</button>
+            </div>
+          </div>
+          <div class="text-sm text-gray-700">${note.content}</div>
+          ${note.author ? `<div class="text-xs text-gray-500 mt-2">作成者: ${note.author}</div>` : ''}
+        `;
+        container.appendChild(noteItem);
+      });
+    }
+
+    // メモ追加
+    function addCustomerNote() {
+      const title = prompt('メモのタイトルを入力してください');
+      if (!title) return;
+      
+      const content = prompt('メモの内容を入力してください');
+      if (!content) return;
+      
+      const newNote = {
+        title: title,
+        content: content,
+        createdAt: new Date().toISOString(),
+        author: 'スタッフ' // 実際には現在ログイン中のスタッフ名
+      };
+      
+      if (!currentCustomer.customerNotes) {
+        currentCustomer.customerNotes = [];
+      }
+      
+      currentCustomer.customerNotes.push(newNote);
+      
+      // Firestoreに保存
+      db.collection('customers').doc(currentCustomer.id).update({
+        customerNotes: currentCustomer.customerNotes
+      }).then(() => {
+        loadCustomerNotes();
+        alert('メモを追加しました');
+      }).catch(error => {
+        console.error('メモ保存エラー:', error);
+        alert('メモの保存に失敗しました');
+      });
+    }
+
+    // メモ削除
+    async function deleteNote(index) {
+      if (!confirm('このメモを削除しますか？')) return;
+      
+      try {
+        currentCustomer.customerNotes.splice(index, 1);
+        
+        await db.collection('customers').doc(currentCustomer.id).update({
+          customerNotes: currentCustomer.customerNotes
+        });
+        
+        loadCustomerNotes();
+        alert('メモを削除しました');
+        
+      } catch (error) {
+        console.error('メモ削除エラー:', error);
+        alert('メモの削除に失敗しました');
+      }
+    }
+
+    // CSV出力
+    function exportToCSV() {
+      const headers = [
+        '顧客ID', '名前', '電話番号', '生年月日', '職業', 
+        '髪質', '髪の量', 'アレルギー', 'タグ', '来店回数', 
+        '累計金額', '最終来店日', '初回来店日'
+      ];
+      
+      const csvData = filteredCustomers.map(customer => [
+        customer.id,
+        customer.name || '',
+        customer.phone || '',
+        customer.birthday || '',
+        customer.occupation || '',
+        customer.hairType || '',
+        customer.hairVolume || '',
+        customer.allergies || '',
+        (customer.tags || []).join(';'),
+        customer.totalVisits,
+        customer.totalSpent,
+        customer.lastVisit ? customer.lastVisit.toLocaleDateString('ja-JP') : '',
+        customer.createdAt ? new Date(customer.createdAt).toLocaleDateString('ja-JP') : ''
+      ]);
+      
+      const csvContent = [headers, ...csvData]
+        .map(row => row.map(field => `"${field}"`).join(','))
+        .join('\n');
+      
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `顧客一覧_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+    }
+
+    // 新規顧客追加モーダル
+    function openNewCustomerModal() {
+      const name = prompt('お客様のお名前を入力してください');
+      if (!name) return;
+      
+      const phone = prompt('電話番号を入力してください');
+      if (!phone) return;
+      
+      createNewCustomer(name, phone);
+    }
+    
+    // 新規顧客作成
+    async function createNewCustomer(name, phone) {
+      try {
+        const newCustomer = {
+          name: name.trim(),
+          phone: phone.trim(),
+          createdAt: new Date().toISOString(),
+          tags: ['新規顧客'],
+          reservations: [],
+          notes: '',
+          allergies: '',
+          hairType: '',
+          hairVolume: '',
+          occupation: '',
+          birthday: '',
+          photos: [],
+          customerNotes: []
+        };
+        
+        const docRef = await db.collection('customers').add(newCustomer);
+        newCustomer.id = docRef.id;
+        
+        // ローカルデータに追加
+        customersData.push({
+          ...newCustomer,
+          totalVisits: 0,
+          totalSpent: 0,
+          lastVisit: null,
+          daysSinceLastVisit: null
+        });
+        
+        filteredCustomers = [...customersData];
+        renderCustomers();
+        updateStatistics();
+        
+        alert('新規顧客を追加しました');
+        
+        // 詳細編集のために即座にモーダルを開く
+        openCustomerModal(docRef.id);
+        
+      } catch (error) {
+        console.error('新規顧客作成エラー:', error);
+        alert('顧客の作成に失敗しました');
+      }
+    }
+
+    // グローバル関数として公開
+    window.openCustomerModal = openCustomerModal;
+    window.removeTag = removeTag;
+    window.deleteNote = deleteNote;
+    window.openPhotoModal = function(photoUrl) {
+      // 写真拡大表示のモーダル実装
+      window.open(photoUrl, '_blank');
+    };
+  </script>
+</body>
+</html>basejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/fire

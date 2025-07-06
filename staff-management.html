@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>スタッフ管理 - Salone Ponte</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .modal {
+      @apply fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50;
+    }
+    
+    .modal.active {
+      @apply flex;
+    }
+
+    .role-manager { @apply bg-purple-100 text-purple-800; }
+    .role-senior { @apply bg-blue-100 text-blue-800; }
+    .role-stylist { @apply bg-green-100 text-green-800; }
+    .role-assistant { @apply bg-yellow-100 text-yellow-800; }
+    .role-trainee { @apply bg-gray-100 text-gray-800; }
+
+    .image-preview {
+      position: relative;
+      display: inline-block;
+    }
+
+    .image-preview img {
+      width: 150px;
+      height: 150px;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+
+    .image-preview .remove-btn {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: #ef4444;
+      color: white;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .skill-tag {
+      @apply inline-block px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 mr-2 mb-2;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="container mx-auto px-4 py-6 max-w-7xl">
+    <!-- ヘッダー -->
+    <div class="flex justify-between items-center mb-8">
+      <div>
+        <div class="flex items-center gap-4 mb-2">
+          <button onclick="history.back()" class="text-gray-500 hover:text-gray-700">
+            ← ダッシュボードに戻る
+          </button>
+        </div>
+        <h1 class="text-3xl font-bold text-gray-800">👨‍💼 スタッフ管理</h1>
+        <p class="text-gray-600">スタッフの登録・編集・スケジュール管理</p>
+      </div>
+      <div class="flex space-x-3">
+        <button id="addStaffBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+          + 新規スタッフ追加
+        </button>
+        <button id="exportBtn" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors">
+          📊 CSV出力
+        </button>
+      </div>
+    </div>
+
+    <!-- 検索・フィルター -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">スタッフ検索</label>
+          <input type="text" id="searchInput" placeholder="名前で検索" 
+                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">役職</label>
+          <select id="roleFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">全て</option>
+            <option value="店長">店長</option>
+            <option value="トップスタイリスト">トップスタイリスト</option>
+            <option value="スタイリスト">スタイリスト</option>
+            <option value="アシスタント">アシスタント</option>
+            <option value="研修生">研修生</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">勤務状況</label>
+          <select id="statusFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">全て</option>
+            <option value="active">在籍中</option>
+            <option value="vacation">休暇中</option>
+            <option value="inactive">退職</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button id="resetFilter" class="w-full bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">
+            リセット
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 統計サマリー -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+            👨‍💼
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600">総スタッフ数</p>
+            <p class="text-2xl font-semibold text-gray-900" id="totalStaff">0</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-green-100 text-green-600">
+            ✅
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600">在籍中</p>
+            <p class="text-2xl font-semibold text-gray-900" id="activeStaff">0</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+            ⭐
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600">スタイリスト</p>
+            <p class="text-2xl font-semibold text-gray-900" id="stylistCount">0</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+            🆕
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600">アシスタント</p>
+            <p class="text-2xl font-semibold text-gray-900" id="assistantCount">0</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- スタッフ一覧 -->
+    <div class="bg-white rounded-lg shadow-md">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900">スタッフ一覧</h3>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6" id="staffGrid">
+        <!-- スタッフカードは動的に生成 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- スタッフ編集モーダル -->
+  <div id="staffModal" class="modal">
+    <div class="bg-white rounded-lg w-full max-w-4xl mx-4 max-h-full overflow-y-auto">
+      <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+        <h3 class="text-lg font-semibold text-gray-900" id="modalTitle">スタッフ編集</h3>
+        <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="p-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <!-- 基本情報 -->
+          <div>
+            <h4 class="font-semibold mb-4">基本情報</h4>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700">氏名 *</label>
+                <input type="text" id="editStaffName" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" required>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">役職 *</label>
+                  <select id="editStaffRole" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                    <option value="店長">店長</option>
+                    <option value="トップスタイリスト">トップスタイリスト</option>
+                    <option value="スタイリスト">スタイリスト</option>
+                    <option value="アシスタント">アシスタント</option>
+                    <option value="研修生">研修生</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">勤務状況</label>
+                  <select id="editStaffStatus" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                    <option value="active">在籍中</option>
+                    <option value="vacation">休暇中</option>
+                    <option value="inactive">退職</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">電話番号</label>
+                  <input type="tel" id="editStaffPhone" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">メールアドレス</label>
+                  <input type="email" id="editStaffEmail" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">入社日</label>
+                <input type="date" id="editStaffHireDate" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">自己紹介</label>
+                <textarea id="editStaffBio" rows="4" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                          placeholder="お客様に向けた自己紹介・メッセージを入力してください"></textarea>
+              </div>
+            </div>
+          </div>
+          
+          <!-- プロフィール画像・スキル -->
+          <div>
+            <h4 class="font-semibold mb-4">プロフィール画像</h4>
+            <div class="space-y-4 mb-6">
+              <div>
+                <input type="file" id="staffPhotoUpload" accept="image/*" class="hidden">
+                <button onclick="document.getElementById('staffPhotoUpload').click()" 
+                        class="w-full bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 border-2 border-dashed border-blue-300">
+                  📷 プロフィール写真をアップロード
+                </button>
+                <p class="text-sm text-gray-500 mt-2">推奨サイズ: 400x400px（正方形）</p>
+              </div>
+              
+              <!-- 写真プレビュー -->
+              <div id="photoPreview" class="flex justify-center">
+                <!-- 写真プレビューは動的に生成 -->
+              </div>
+              
+              <!-- プロフィール画像URL -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700">プロフィール画像URL</label>
+                <input type="url" id="editStaffPhotoURL" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                       placeholder="https://example.com/image.jpg">
+              </div>
+            </div>
+
+            <h4 class="font-semibold mb-4">専門スキル・得意分野</h4>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700">得意メニュー</label>
+                <textarea id="editStaffSpecialty" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                          placeholder="カット、カラー、パーマなど得意な技術を入力"></textarea>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">スキルタグ</label>
+                <div id="skillTags" class="mb-2">
+                  <!-- スキルタグは動的に生成 -->
+                </div>
+                <div class="flex gap-2">
+                  <input type="text" id="newSkillInput" placeholder="新しいスキルを入力" 
+                         class="flex-1 px-3 py-2 border border-gray-300 rounded-md">
+                  <button id="addSkillBtn" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
+                    追加
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">経験年数</label>
+                <input type="number" id="editStaffExperience" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" min="0">
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 勤務設定 -->
+        <div class="mt-8">
+          <h4 class="font-semibold mb-4">勤務設定</h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">勤務曜日</label>
+              <div class="grid grid-cols-7 gap-2">
+                <label class="flex items-center">
+                  <input type="checkbox" id="workday-0" class="mr-1">
+                  <span class="text-sm">日</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="checkbox" id="workday-1" class="mr-1">
+                  <span class="text-sm">月</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="checkbox" id="workday-2" class="mr-1">
+                  <span class="text-sm">火</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="checkbox" id="workday-3" class="mr-1">
+                  <span class="text-sm">水</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="checkbox" id="workday-4" class="mr-1">
+                  <span class="text-sm">木</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="checkbox" id="workday-5" class="mr-1">
+                  <span class="text-sm">金</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="checkbox" id="workday-6" class="mr-1">
+                  <span class="text-sm">土</span>
+                </label>
+              </div>
+            </div>
+            <div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">開始時間</label>
+                  <input type="time" id="editStaffStartTime" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">終了時間</label>
+                  <input type="time" id="editStaffEndTime" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mt-8 flex justify-between">
+          <button id="deleteStaffBtn" class="bg-red-500 text-white px-6 py-2 rounded-md hover:bg-red-600">
+            削除
+          </button>
+          <div class="flex gap-3">
+            <button id="cancelEditBtn" class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600">
+              キャンセル
+            </button>
+            <button id="saveStaffBtn" class="bg-green-500 text-white px-6 py-2 rounded-md hover:bg-green-600">
+              保存
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+
+  <script>
+    // Firebase 初期化
+    const firebaseConfig = {
+      apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
+      authDomain: "salone-ponte-fceca.firebaseapp.com",
+      projectId: "salone-ponte-fceca",
+      storageBucket: "salone-ponte-fceca.appspot.com",
+      messagingSenderId: "463711728652",
+      appId: "1:463711728652:web:59c749e11d201b26b86a29",
+      measurementId: "G-MPWGTB6R7C"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+
+    // グローバル変数
+    let staffsData = [];
+    let filteredStaffs = [];
+    let currentStaff = null;
+
+    // 初期化
+    document.addEventListener('DOMContentLoaded', function() {
+      loadStaffs();
+      setupEventListeners();
+    });
+
+    // イベントリスナー設定
+    function setupEventListeners() {
+      // 検索・フィルター
+      document.getElementById('searchInput').addEventListener('input', applyFilters);
+      document.getElementById('roleFilter').addEventListener('change', applyFilters);
+      document.getElementById('statusFilter').addEventListener('change', applyFilters);
+      document.getElementById('resetFilter').addEventListener('click', resetFilters);
+
+      // ボタン
+      document.getElementById('addStaffBtn').addEventListener('click', openNewStaffModal);
+      document.getElementById('exportBtn').addEventListener('click', exportToCSV);
+
+      // モーダル
+      document.getElementById('closeModal').addEventListener('click', closeModal);
+      document.getElementById('cancelEditBtn').addEventListener('click', closeModal);
+      document.getElementById('saveStaffBtn').addEventListener('click', saveStaff);
+      document.getElementById('deleteStaffBtn').addEventListener('click', deleteStaff);
+
+      // スキル・写真
+      document.getElementById('addSkillBtn').addEventListener('click', addSkill);
+      document.getElementById('staffPhotoUpload').addEventListener('change', handlePhotoUpload);
+    }
+
+    // スタッフデータ読み込み
+    async function loadStaffs() {
+      try {
+        const snapshot = await db.collection('staffs').get();
+        staffsData = [];
+        
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          staffsData.push({
+            id: doc.id,
+            ...data,
+            // デフォルト値設定
+            status: data.status || 'active',
+            bio: data.bio || '',
+            specialty: data.specialty || '',
+            skills: data.skills || [],
+            experience: data.experience || 0,
+            workdays: data.workdays || [1,2,3,4,5], // 月-金
+            startTime: data.startTime || '10:00',
+            endTime: data.endTime || '19:00'
+          });
+        });
+        
+        // サンプルデータがない場合は作成
+        if (staffsData.length === 0) {
+          await createSampleStaffs();
+        }
+        
+        filteredStaffs = [...staffsData];
+        renderStaffs();
+        updateStatistics();
+        
+      } catch (error) {
+        console.error('スタッフ読み込みエラー:', error);
+        alert('スタッフデータの読み込みに失敗しました');
+      }
+    }
+
+    // サンプルスタッフ作成
+    async function createSampleStaffs() {
+      const sampleStaffs = [
+        {
+          name: '山田 さくら',
+          role: 'トップスタイリスト',
+          status: 'active',
+          specialty: 'カラーリング、ヘアケア',
+          bio: 'お客様の魅力を最大限に引き出すスタイルをご提案します',
+          skills: ['カラー', 'トリートメント', 'ヘアケア'],
+          experience: 8,
+          workdays: [1,2,3,4,5],
+          startTime: '10:00',
+          endTime: '19:00'
+        },
+        {
+          name: '田中 健太',
+          role: 'スタイリスト',
+          status: 'active',
+          specialty: 'カット、パーマ',
+          bio: 'トレンドを取り入れた個性的なスタイルが得意です',
+          skills: ['カット', 'パーマ', 'スタイリング'],
+          experience: 5,
+          workdays: [1,2,3,4,5,6],
+          startTime: '10:00',
+          endTime: '19:00'
+        },
+        {
+          name: '佐々木 美香',
+          role: 'アシスタント',
+          status: 'active',
+          specialty: 'シャンプー、ブロー',
+          bio: '丁寧なシャンプーとブローでお客様をリラックスさせます',
+          skills: ['シャンプー', 'ブロー', 'ヘッドスパ'],
+          experience: 2,
+          workdays: [0,1,2,3,4,5],
+          startTime: '10:00',
+          endTime: '18:00'
+        }
+      ];
+
+      for (const staff of sampleStaffs) {
+        staff.createdAt = new Date().toISOString();
+        await db.collection('staffs').add(staff);
+      }
+      
+      // 再読み込み
+      await loadStaffs();
+    }
+
+    // スタッフ表示
+    function renderStaffs() {
+      const grid = document.getElementById('staffGrid');
+      grid.innerHTML = '';
+
+      if (filteredStaffs.length === 0) {
+        grid.innerHTML = '<p class="text-gray-500 text-center col-span-full">スタッフがいません</p>';
+        return;
+      }
+
+      filteredStaffs.forEach(staff => {
+        const card = document.createElement('div');
+        card.className = 'border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer';
+        
+        const roleClass = getRoleClass(staff.role);
+        const statusBadge = getStatusBadge(staff.status);
+        
+        card.innerHTML = `
+          <div class="relative">
+            <img src="${staff.photoURL || 'https://via.placeholder.com/200x200?text=No+Image'}" 
+                 alt="${staff.name}" class="w-full h-48 object-cover">
+            <div class="absolute top-2 left-2">
+              <span class="text-xs px-2 py-1 rounded-full ${roleClass}">${staff.role}</span>
+            </div>
+            <div class="absolute top-2 right-2">
+              ${statusBadge}
+            </div>
+          </div>
+          <div class="p-4">
+            <h3 class="font-semibold text-lg mb-2">${staff.name}</h3>
+            <p class="text-gray-600 text-sm mb-3 line-clamp-2">${staff.bio || '自己紹介が登録されていません'}</p>
+            
+            <div class="mb-3">
+              <p class="text-sm font-medium text-gray-700">得意分野:</p>
+              <p class="text-sm text-gray-600">${staff.specialty || '未設定'}</p>
+            </div>
+            
+            <div class="mb-3">
+              <p class="text-sm font-medium text-gray-700">スキル:</p>
+              <div class="flex flex-wrap gap-1 mt-1">
+                ${staff.skills.slice(0, 3).map(skill => 
+                  `<span class="skill-tag">${skill}</span>`
+                ).join('')}
+                ${staff.skills.length > 3 ? `<span class="text-xs text-gray-500">+${staff.skills.length - 3}</span>` : ''}
+              </div>
+            </div>
+            
+            <div class="flex justify-between items-center">
+              <div class="text-sm text-gray-500">
+                経験${staff.experience}年
+              </div>
+              <button onclick="openStaffModal('${staff.id}')" 
+                      class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                編集
+              </button>
+            </div>
+          </div>
+        `;
+        
+        grid.appendChild(card);
+      });
+    }
+
+    // 役職クラス取得
+    function getRoleClass(role) {
+      const classMap = {
+        '店長': 'role-manager',
+        'トップスタイリスト': 'role-senior',
+        'スタイリスト': 'role-stylist',
+        'アシスタント': 'role-assistant',
+        '研修生': 'role-trainee'
+      };
+      return classMap[role] || 'role-stylist';
+    }
+
+    // ステータスバッジ取得
+    function getStatusBadge(status) {
+      const badgeMap = {
+        'active': '<span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">在籍中</span>',
+        'vacation': '<span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">休暇中</span>',
+        'inactive': '<span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">退職</span>'
+      };
+      return badgeMap[status] || '';
+    }
+
+    // 統計更新
+    function updateStatistics() {
+      const total = staffsData.filter(s => s.status === 'active').length;
+      const active = staffsData.filter(s => s.status === 'active').length;
+      const stylists = staffsData.filter(s => 
+        (s.role === 'スタイリスト' || s.role === 'トップスタイリスト' || s.role === '店長') && 
+        s.status === 'active'
+      ).length;
+      const assistants = staffsData.filter(s => 
+        (s.role === 'アシスタント' || s.role === '研修生') && 
+        s.status === 'active'
+      ).length;
+      
+      document.getElementById('totalStaff').textContent = total;
+      document.getElementById('activeStaff').textContent = active;
+      document.getElementById('stylistCount').textContent = stylists;
+      document.getElementById('assistantCount').textContent = assistants;
+    }
+
+    // フィルター適用
+    function applyFilters() {
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      const roleFilter = document.getElementById('roleFilter').value;
+      const statusFilter = document.getElementById('statusFilter').value;
+      
+      filteredStaffs = staffsData.filter(staff => {
+        // 検索フィルター
+        if (searchTerm && !staff.name.toLowerCase().includes(searchTerm)) {
+          return false;
+        }
+        
+        // 役職フィルター
+        if (roleFilter && staff.role !== roleFilter) {
+          return false;
+        }
+        
+        // ステータスフィルター
+        if (statusFilter && staff.status !== statusFilter) {
+          return false;
+        }
+        
+        return true;
+      });
+      
+      renderStaffs();
+    }
+
+    // フィルターリセット
+    function resetFilters() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('roleFilter').value = '';
+      document.getElementById('statusFilter').value = '';
+      filteredStaffs = [...staffsData];
+      renderStaffs();
+    }
+
+    // 新規スタッフモーダル
+    function openNewStaffModal() {
+      currentStaff = null;
+      document.getElementById('modalTitle').textContent = '新規スタッフ追加';
+      clearStaffForm();
+      document.getElementById('deleteStaffBtn').style.display = 'none';
+      document.getElementById('staffModal').classList.add('active');
+    }
+
+    // スタッフ編集モーダル
+    function openStaffModal(staffId) {
+      currentStaff = staffsData.find(s => s.id === staffId);
+      if (!currentStaff) return;
+      
+      document.getElementById('modalTitle').textContent = 'スタッフ編集';
+      loadStaffToForm();
+      document.getElementById('deleteStaffBtn').style.display = 'block';
+      document.getElementById('staffModal').classList.add('active');
+    }
+
+    // フォームクリア
+    function clearStaffForm() {
+      document.getElementById('editStaffName').value = '';
+      document.getElementById('editStaffRole').value = 'スタイリスト';
+      document.getElementById('editStaffStatus').value = 'active';
+      document.getElementById('editStaffPhone').value = '';
+      document.getElementById('editStaffEmail').value = '';
+      document.getElementById('editStaffHireDate').value = '';
+      document.getElementById('editStaffBio').value = '';
+      document.getElementById('editStaffPhotoURL').value = '';
+      document.getElementById('editStaffSpecialty').value = '';
+      document.getElementById('editStaffExperience').value = '';
+      document.getElementById('editStaffStartTime').value = '10:00';
+      document.getElementById('editStaffEndTime').value = '19:00';
+      
+      // 勤務曜日リセット（月-金をデフォルト）
+      for (let i = 0; i < 7; i++) {
+        document.getElementById(`workday-${i}`).checked = (i >= 1 && i <= 5);
+      }
+      
+      renderSkillTags([]);
+      renderPhotoPreview();
+    }
+
+    // スタッフ情報をフォームに読み込み
+    function loadStaffToForm() {
+      document.getElementById('editStaffName').value = currentStaff.name;
+      document.getElementById('editStaffRole').value = currentStaff.role;
+      document.getElementById('editStaffStatus').value = currentStaff.status;
+      document.getElementById('editStaffPhone').value = currentStaff.phone || '';
+      document.getElementById('editStaffEmail').value = currentStaff.email || '';
+      document.getElementById('editStaffHireDate').value = currentStaff.hireDate || '';
+      document.getElementById('editStaffBio').value = currentStaff.bio || '';
+      document.getElementById('editStaffPhotoURL').value = currentStaff.photoURL || '';
+      document.getElementById('editStaffSpecialty').value = currentStaff.specialty || '';
+      document.getElementById('editStaffExperience').value = currentStaff.experience || 0;
+      document.getElementById('editStaffStartTime').value = currentStaff.startTime || '10:00';
+      document.getElementById('editStaffEndTime').value = currentStaff.endTime || '19:00';
+      
+      // 勤務曜日設定
+      const workdays = currentStaff.workdays || [1,2,3,4,5];
+      for (let i = 0; i < 7; i++) {
+        document.getElementById(`workday-${i}`).checked = workdays.includes(i);
+      }
+      
+      renderSkillTags(currentStaff.skills || []);
+      renderPhotoPreview();
+    }
+
+    // スキルタグ表示
+    function renderSkillTags(skills) {
+      const container = document.getElementById('skillTags');
+      container.innerHTML = '';
+      
+      skills.forEach((skill, index) => {
+        const tag = document.createElement('span');
+        tag.className = 'skill-tag cursor-pointer';
+        tag.innerHTML = `${skill} <span onclick="removeSkill(${index})" class="ml-1 text-red-500">×</span>`;
+        container.appendChild(tag);
+      });
+    }
+
+    // スキル追加
+    function addSkill() {
+      const newSkill = document.getElementById('newSkillInput').value.trim();
+      if (!newSkill) return;
+      
+      let skills = currentStaff ? [...(currentStaff.skills || [])] : [];
+      if (!skills.includes(newSkill)) {
+        skills.push(newSkill);
+        renderSkillTags(skills);
+        document.getElementById('newSkillInput').value = '';
+        
+        if (currentStaff) {
+          currentStaff.skills = skills;
+        }
+      }
+    }
+
+    // スキル削除
+    function removeSkill(index) {
+      let skills = currentStaff ? [...(currentStaff.skills || [])] : [];
+      skills.splice(index, 1);
+      renderSkillTags(skills);
+      
+      if (currentStaff) {
+        currentStaff.skills = skills;
+      }
+    }
+
+    // 写真アップロード処理
+    async function handlePhotoUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      try {
+        const fileName = `staffs/${Date.now()}_${file.name}`;
+        const storageRef = storage.ref().child(fileName);
+        const snapshot = await storageRef.put(file);
+        const downloadURL = await snapshot.ref.getDownloadURL();
+        
+        document.getElementById('editStaffPhotoURL').value = downloadURL;
+        renderPhotoPreview();
+        alert('写真をアップロードしました');
+        
+      } catch (error) {
+        console.error('写真アップロードエラー:', error);
+        alert('写真のアップロードに失敗しました');
+      }
+    }
+
+    // 写真プレビュー表示
+    function renderPhotoPreview() {
+      const container = document.getElementById('photoPreview');
+      const photoURL = document.getElementById('editStaffPhotoURL').value;
+      
+      container.innerHTML = '';
+      
+      if (photoURL) {
+        const preview = document.createElement('div');
+        preview.className = 'image-preview';
+        preview.innerHTML = `
+          <img src="${photoURL}" alt="プロフィール写真">
+          <button class="remove-btn" onclick="removePhoto()">×</button>
+        `;
+        container.appendChild(preview);
+      }
+    }
+
+    // 写真削除
+    function removePhoto() {
+      document.getElementById('editStaffPhotoURL').value = '';
+      renderPhotoPreview();
+    }
+
+    // スタッフ保存
+    async function saveStaff() {
+      try {
+        // 勤務曜日の取得
+        const workdays = [];
+        for (let i = 0; i < 7; i++) {
+          if (document.getElementById(`workday-${i}`).checked) {
+            workdays.push(i);
+          }
+        }
+        
+        const staffData = {
+          name: document.getElementById('editStaffName').value.trim(),
+          role: document.getElementById('editStaffRole').value,
+          status: document.getElementById('editStaffStatus').value,
+          phone: document.getElementById('editStaffPhone').value.trim(),
+          email: document.getElementById('editStaffEmail').value.trim(),
+          hireDate: document.getElementById('editStaffHireDate').value,
+          bio: document.getElementById('editStaffBio').value.trim(),
+          photoURL: document.getElementById('editStaffPhotoURL').value.trim(),
+          specialty: document.getElementById('editStaffSpecialty').value.trim(),
+          skills: currentStaff ? (currentStaff.skills || []) : [],
+          experience: parseInt(document.getElementById('editStaffExperience').value) || 0,
+          workdays: workdays,
+          startTime: document.getElementById('editStaffStartTime').value,
+          endTime: document.getElementById('editStaffEndTime').value,
+          updatedAt: new Date().toISOString()
+        };
+        
+        // バリデーション
+        if (!staffData.name || !staffData.role) {
+          alert('氏名と役職は必須です');
+          return;
+        }
+        
+        if (currentStaff) {
+          // 更新
+          await db.collection('staffs').doc(currentStaff.id).update(staffData);
+          Object.assign(currentStaff, staffData);
+          const index = staffsData.findIndex(s => s.id === currentStaff.id);
+          if (index !== -1) {
+            Object.assign(staffsData[index], staffData);
+          }
+        } else {
+          // 新規作成
+          staffData.createdAt = new Date().toISOString();
+          const docRef = await db.collection('staffs').add(staffData);
+          staffData.id = docRef.id;
+          staffsData.push(staffData);
+        }
+        
+        applyFilters();
+        updateStatistics();
+        closeModal();
+        alert('スタッフ情報を保存しました');
+        
+      } catch (error) {
+        console.error('スタッフ保存エラー:', error);
+        alert('スタッフ情報の保存に失敗しました');
+      }
+    }
+
+    // スタッフ削除
+    async function deleteStaff() {
+      if (!currentStaff || !confirm('このスタッフを削除しますか？\nこの操作は取り消せません。')) return;
+      
+      try {
+        await db.collection('staffs').doc(currentStaff.id).delete();
+        
+        const index = staffsData.findIndex(s => s.id === currentStaff.id);
+        if (index !== -1) {
+          staffsData.splice(index, 1);
+        }
+        
+        applyFilters();
+        updateStatistics();
+        closeModal();
+        alert('スタッフを削除しました');
+        
+      } catch (error) {
+        console.error('スタッフ削除エラー:', error);
+        alert('スタッフの削除に失敗しました');
+      }
+    }
+
+    // モーダル閉じる
+    function closeModal() {
+      document.getElementById('staffModal').classList.remove('active');
+      currentStaff = null;
+    }
+
+    // CSV出力
+    function exportToCSV() {
+      const headers = [
+        'スタッフID', '氏名', '役職', '勤務状況', '電話番号', 'メールアドレス', 
+        '入社日', '得意分野', 'スキル', '経験年数', '開始時間', '終了時間', '作成日時'
+      ];
+      
+      const csvData = filteredStaffs.map(staff => [
+        staff.id,
+        staff.name,
+        staff.role,
+        staff.status === 'active' ? '在籍中' : staff.status === 'vacation' ? '休暇中' : '退職',
+        staff.phone || '',
+        staff.email || '',
+        staff.hireDate || '',
+        staff.specialty || '',
+        (staff.skills || []).join(';'),
+        staff.experience || 0,
+        staff.startTime || '',
+        staff.endTime || '',
+        staff.createdAt ? new Date(staff.createdAt).toLocaleString('ja-JP') : ''
+      ]);
+      
+      const csvContent = [headers, ...csvData]
+        .map(row => row.map(field => `"${field}"`).join(','))
+        .join('\n');
+      
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `スタッフ一覧_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+    }
+
+    // グローバル関数として公開
+    window.openStaffModal = openStaffModal;
+    window.removeSkill = removeSkill;
+    window.removePhoto = removePhoto;
+  </script>
+</body>
+</html>

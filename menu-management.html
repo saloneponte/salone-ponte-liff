@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>メニュー管理 - Salone Ponte</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .modal {
+      @apply fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50;
+    }
+    
+    .modal.active {
+      @apply flex;
+    }
+
+    .category-popular { @apply bg-red-100 text-red-800; }
+    .category-cut { @apply bg-blue-100 text-blue-800; }
+    .category-color { @apply bg-purple-100 text-purple-800; }
+    .category-perm { @apply bg-green-100 text-green-800; }
+    .category-treatment { @apply bg-yellow-100 text-yellow-800; }
+    .category-special { @apply bg-pink-100 text-pink-800; }
+    .category-other { @apply bg-gray-100 text-gray-800; }
+
+    .image-preview {
+      position: relative;
+      display: inline-block;
+    }
+
+    .image-preview img {
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+
+    .image-preview .remove-btn {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: #ef4444;
+      color: white;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="container mx-auto px-4 py-6 max-w-7xl">
+    <!-- ヘッダー -->
+    <div class="flex justify-between items-center mb-8">
+      <div>
+        <div class="flex items-center gap-4 mb-2">
+          <button onclick="history.back()" class="text-gray-500 hover:text-gray-700">
+            ← ダッシュボードに戻る
+          </button>
+        </div>
+        <h1 class="text-3xl font-bold text-gray-800">📋 メニュー管理</h1>
+        <p class="text-gray-600">メニューの登録・編集・削除</p>
+      </div>
+      <div class="flex space-x-3">
+        <button id="addMenuBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+          + 新規メニュー追加
+        </button>
+        <button id="exportBtn" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors">
+          📊 CSV出力
+        </button>
+      </div>
+    </div>
+
+    <!-- 検索・フィルター -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">メニュー検索</label>
+          <input type="text" id="searchInput" placeholder="メニュー名で検索" 
+                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">カテゴリ</label>
+          <select id="categoryFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">全て</option>
+            <option value="人気メニュー">人気メニュー</option>
+            <option value="カット">カット</option>
+            <option value="カラー">カラー</option>
+            <option value="パーマ">パーマ</option>
+            <option value="トリートメント">トリートメント</option>
+            <option value="特別メニュー">特別メニュー</option>
+            <option value="その他">その他</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">価格帯</label>
+          <select id="priceFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">全て</option>
+            <option value="0-3000">3,000円以下</option>
+            <option value="3000-5000">3,000-5,000円</option>
+            <option value="5000-10000">5,000-10,000円</option>
+            <option value="10000-20000">10,000-20,000円</option>
+            <option value="20000-">20,000円以上</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button id="resetFilter" class="w-full bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">
+            リセット
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 統計サマリー -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+            📋
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600">総メニュー数</p>
+            <p class="text-2xl font-semibold text-gray-900" id="totalMenus">0</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-green-100 text-green-600">
+            💰
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600">平均価格</p>
+            <p class="text-2xl font-semibold text-gray-900" id="averagePrice">¥0</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+            ⏱️
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600">平均所要時間</p>
+            <p class="text-2xl font-semibold text-gray-900" id="averageDuration">0分</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-red-100 text-red-600">
+            🔥
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600">人気メニュー</p>
+            <p class="text-2xl font-semibold text-gray-900" id="popularMenus">0</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- メニュー一覧 -->
+    <div class="bg-white rounded-lg shadow-md">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900">メニュー一覧</h3>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6" id="menuGrid">
+        <!-- メニューカードは動的に生成 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- メニュー編集モーダル -->
+  <div id="menuModal" class="modal">
+    <div class="bg-white rounded-lg w-full max-w-4xl mx-4 max-h-full overflow-y-auto">
+      <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+        <h3 class="text-lg font-semibold text-gray-900" id="modalTitle">メニュー編集</h3>
+        <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="p-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <!-- 基本情報 -->
+          <div>
+            <h4 class="font-semibold mb-4">基本情報</h4>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700">メニュー名 *</label>
+                <input type="text" id="editMenuName" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" required>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">価格 *</label>
+                  <input type="number" id="editMenuPrice" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">所要時間（分） *</label>
+                  <input type="number" id="editMenuDuration" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">カテゴリ</label>
+                <select id="editMenuCategory" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                  <option value="人気メニュー">人気メニュー</option>
+                  <option value="カット">カット</option>
+                  <option value="カラー">カラー</option>
+                  <option value="パーマ">パーマ</option>
+                  <option value="トリートメント">トリートメント</option>
+                  <option value="特別メニュー">特別メニュー</option>
+                  <option value="その他">その他</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">説明</label>
+                <textarea id="editMenuDescription" rows="4" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                          placeholder="メニューの詳細説明を入力してください"></textarea>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">表示順序</label>
+                <input type="number" id="editMenuOrder" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" min="0">
+              </div>
+            </div>
+          </div>
+          
+          <!-- 写真管理 -->
+          <div>
+            <h4 class="font-semibold mb-4">メニュー写真</h4>
+            <div class="space-y-4">
+              <div>
+                <input type="file" id="menuPhotoUpload" accept="image/*" multiple class="hidden">
+                <button onclick="document.getElementById('menuPhotoUpload').click()" 
+                        class="w-full bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 border-2 border-dashed border-blue-300">
+                  📷 写真をアップロード
+                </button>
+                <p class="text-sm text-gray-500 mt-2">複数選択可能です。推奨サイズ: 800x600px</p>
+              </div>
+              
+              <!-- 写真プレビュー -->
+              <div id="photoPreview" class="grid grid-cols-2 gap-4">
+                <!-- 写真プレビューは動的に生成 -->
+              </div>
+              
+              <!-- メイン写真設定 -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700">メイン写真URL</label>
+                <input type="url" id="editMenuPhotoURL" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                       placeholder="https://example.com/image.jpg">
+                <p class="text-sm text-gray-500 mt-1">予約画面で表示される代表画像</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- オプション設定 -->
+        <div class="mt-8">
+          <h4 class="font-semibold mb-4">オプション設定</h4>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="flex items-center">
+              <input type="checkbox" id="editMenuActive" class="h-4 w-4 text-blue-600 rounded">
+              <label for="editMenuActive" class="ml-2 text-sm text-gray-700">表示中</label>
+            </div>
+            <div class="flex items-center">
+              <input type="checkbox" id="editMenuPopular" class="h-4 w-4 text-blue-600 rounded">
+              <label for="editMenuPopular" class="ml-2 text-sm text-gray-700">人気メニュー</label>
+            </div>
+            <div class="flex items-center">
+              <input type="checkbox" id="editMenuRecommended" class="h-4 w-4 text-blue-600 rounded">
+              <label for="editMenuRecommended" class="ml-2 text-sm text-gray-700">おすすめ</label>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mt-8 flex justify-between">
+          <button id="deleteMenuBtn" class="bg-red-500 text-white px-6 py-2 rounded-md hover:bg-red-600">
+            削除
+          </button>
+          <div class="flex gap-3">
+            <button id="cancelEditBtn" class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600">
+              キャンセル
+            </button>
+            <button id="saveMenuBtn" class="bg-green-500 text-white px-6 py-2 rounded-md hover:bg-green-600">
+              保存
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+
+  <script>
+    // Firebase 初期化
+    const firebaseConfig = {
+      apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
+      authDomain: "salone-ponte-fceca.firebaseapp.com",
+      projectId: "salone-ponte-fceca",
+      storageBucket: "salone-ponte-fceca.appspot.com",
+      messagingSenderId: "463711728652",
+      appId: "1:463711728652:web:59c749e11d201b26b86a29",
+      measurementId: "G-MPWGTB6R7C"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+
+    // グローバル変数
+    let menusData = [];
+    let filteredMenus = [];
+    let currentMenu = null;
+    let uploadedPhotos = [];
+
+    // 初期化
+    document.addEventListener('DOMContentLoaded', function() {
+      loadMenus();
+      setupEventListeners();
+    });
+
+    // イベントリスナー設定
+    function setupEventListeners() {
+      // 検索・フィルター
+      document.getElementById('searchInput').addEventListener('input', applyFilters);
+      document.getElementById('categoryFilter').addEventListener('change', applyFilters);
+      document.getElementById('priceFilter').addEventListener('change', applyFilters);
+      document.getElementById('resetFilter').addEventListener('click', resetFilters);
+
+      // ボタン
+      document.getElementById('addMenuBtn').addEventListener('click', openNewMenuModal);
+      document.getElementById('exportBtn').addEventListener('click', exportToCSV);
+
+      // モーダル
+      document.getElementById('closeModal').addEventListener('click', closeModal);
+      document.getElementById('cancelEditBtn').addEventListener('click', closeModal);
+      document.getElementById('saveMenuBtn').addEventListener('click', saveMenu);
+      document.getElementById('deleteMenuBtn').addEventListener('click', deleteMenu);
+
+      // 写真アップロード
+      document.getElementById('menuPhotoUpload').addEventListener('change', handlePhotoUpload);
+    }
+
+    // メニューデータ読み込み
+    async function loadMenus() {
+      try {
+        const snapshot = await db.collection('menus').orderBy('order', 'asc').get();
+        menusData = [];
+        
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          menusData.push({
+            id: doc.id,
+            ...data,
+            // デフォルト値設定
+            category: data.category || 'その他',
+            description: data.description || '',
+            order: data.order || 0,
+            active: data.active !== false,
+            popular: data.popular || false,
+            recommended: data.recommended || false,
+            photos: data.photos || []
+          });
+        });
+        
+        // サンプルデータがない場合は作成
+        if (menusData.length === 0) {
+          await createSampleMenus();
+        }
+        
+        filteredMenus = [...menusData];
+        renderMenus();
+        updateStatistics();
+        
+      } catch (error) {
+        console.error('メニュー読み込みエラー:', error);
+        alert('メニューデータの読み込みに失敗しました');
+      }
+    }
+
+    // サンプルメニュー作成
+    async function createSampleMenus() {
+      const sampleMenus = [
+        {
+          name: 'カット',
+          price: 4000,
+          duration: 60,
+          category: 'カット',
+          description: 'シャンプー・ブロー込み',
+          order: 1,
+          active: true,
+          popular: true
+        },
+        {
+          name: 'カット + カラー',
+          price: 8000,
+          duration: 120,
+          category: 'カラー',
+          description: 'カット＋カラー＋トリートメント',
+          order: 2,
+          active: true,
+          recommended: true
+        },
+        {
+          name: 'カット + パーマ',
+          price: 12000,
+          duration: 180,
+          category: 'パーマ',
+          description: 'カット＋デジタルパーマ',
+          order: 3,
+          active: true
+        }
+      ];
+
+      for (const menu of sampleMenus) {
+        await db.collection('menus').add(menu);
+      }
+      
+      // 再読み込み
+      await loadMenus();
+    }
+
+    // メニュー表示
+    function renderMenus() {
+      const grid = document.getElementById('menuGrid');
+      grid.innerHTML = '';
+
+      if (filteredMenus.length === 0) {
+        grid.innerHTML = '<p class="text-gray-500 text-center col-span-full">メニューがありません</p>';
+        return;
+      }
+
+      filteredMenus.forEach(menu => {
+        const card = document.createElement('div');
+        card.className = 'border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer';
+        
+        const categoryClass = getCategoryClass(menu.category);
+        const statusBadges = [];
+        if (menu.popular) statusBadges.push('<span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">人気</span>');
+        if (menu.recommended) statusBadges.push('<span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">おすすめ</span>');
+        if (!menu.active) statusBadges.push('<span class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full">非表示</span>');
+        
+        card.innerHTML = `
+          <div class="relative">
+            <img src="${menu.photoURL || 'https://via.placeholder.com/300x200?text=No+Image'}" 
+                 alt="${menu.name}" class="w-full h-48 object-cover">
+            <div class="absolute top-2 left-2">
+              <span class="text-xs px-2 py-1 rounded-full ${categoryClass}">${menu.category}</span>
+            </div>
+            ${statusBadges.length > 0 ? `<div class="absolute top-2 right-2 space-y-1">${statusBadges.join('')}</div>` : ''}
+          </div>
+          <div class="p-4">
+            <h3 class="font-semibold text-lg mb-2">${menu.name}</h3>
+            <p class="text-gray-600 text-sm mb-3 line-clamp-2">${menu.description || 'メニューの説明がありません'}</p>
+            <div class="flex justify-between items-center">
+              <div>
+                <div class="text-xl font-bold text-blue-600">¥${menu.price.toLocaleString()}</div>
+                <div class="text-sm text-gray-500">${menu.duration}分</div>
+              </div>
+              <button onclick="openMenuModal('${menu.id}')" 
+                      class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                編集
+              </button>
+            </div>
+          </div>
+        `;
+        
+        grid.appendChild(card);
+      });
+    }
+
+    // カテゴリクラス取得
+    function getCategoryClass(category) {
+      const classMap = {
+        '人気メニュー': 'category-popular',
+        'カット': 'category-cut',
+        'カラー': 'category-color',
+        'パーマ': 'category-perm',
+        'トリートメント': 'category-treatment',
+        '特別メニュー': 'category-special',
+        'その他': 'category-other'
+      };
+      return classMap[category] || 'category-other';
+    }
+
+    // 統計更新
+    function updateStatistics() {
+      const total = menusData.filter(m => m.active).length;
+      const averagePrice = menusData.length > 0 ? 
+        Math.round(menusData.reduce((sum, m) => sum + m.price, 0) / menusData.length) : 0;
+      const averageDuration = menusData.length > 0 ? 
+        Math.round(menusData.reduce((sum, m) => sum + m.duration, 0) / menusData.length) : 0;
+      const popularCount = menusData.filter(m => m.popular).length;
+      
+      document.getElementById('totalMenus').textContent = total;
+      document.getElementById('averagePrice').textContent = `¥${averagePrice.toLocaleString()}`;
+      document.getElementById('averageDuration').textContent = `${averageDuration}分`;
+      document.getElementById('popularMenus').textContent = popularCount;
+    }
+
+    // フィルター適用
+    function applyFilters() {
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      const categoryFilter = document.getElementById('categoryFilter').value;
+      const priceFilter = document.getElementById('priceFilter').value;
+      
+      filteredMenus = menusData.filter(menu => {
+        // 検索フィルター
+        if (searchTerm && !menu.name.toLowerCase().includes(searchTerm)) {
+          return false;
+        }
+        
+        // カテゴリフィルター
+        if (categoryFilter && menu.category !== categoryFilter) {
+          return false;
+        }
+        
+        // 価格フィルター
+        if (priceFilter) {
+          const [min, max] = priceFilter.split('-').map(p => parseInt(p) || Infinity);
+          if (menu.price < min || (max !== Infinity && menu.price > max)) {
+            return false;
+          }
+        }
+        
+        return true;
+      });
+      
+      renderMenus();
+    }
+
+    // フィルターリセット
+    function resetFilters() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('categoryFilter').value = '';
+      document.getElementById('priceFilter').value = '';
+      filteredMenus = [...menusData];
+      renderMenus();
+    }
+
+    // 新規メニューモーダル
+    function openNewMenuModal() {
+      currentMenu = null;
+      uploadedPhotos = [];
+      document.getElementById('modalTitle').textContent = '新規メニュー追加';
+      clearMenuForm();
+      document.getElementById('deleteMenuBtn').style.display = 'none';
+      document.getElementById('menuModal').classList.add('active');
+    }
+
+    // メニュー編集モーダル
+    function openMenuModal(menuId) {
+      currentMenu = menusData.find(m => m.id === menuId);
+      if (!currentMenu) return;
+      
+      uploadedPhotos = [...(currentMenu.photos || [])];
+      document.getElementById('modalTitle').textContent = 'メニュー編集';
+      loadMenuToForm();
+      document.getElementById('deleteMenuBtn').style.display = 'block';
+      document.getElementById('menuModal').classList.add('active');
+    }
+
+    // フォームクリア
+    function clearMenuForm() {
+      document.getElementById('editMenuName').value = '';
+      document.getElementById('editMenuPrice').value = '';
+      document.getElementById('editMenuDuration').value = '';
+      document.getElementById('editMenuCategory').value = 'その他';
+      document.getElementById('editMenuDescription').value = '';
+      document.getElementById('editMenuOrder').value = '';
+      document.getElementById('editMenuPhotoURL').value = '';
+      document.getElementById('editMenuActive').checked = true;
+      document.getElementById('editMenuPopular').checked = false;
+      document.getElementById('editMenuRecommended').checked = false;
+      renderPhotoPreview();
+    }
+
+    // メニュー情報をフォームに読み込み
+    function loadMenuToForm() {
+      document.getElementById('editMenuName').value = currentMenu.name;
+      document.getElementById('editMenuPrice').value = currentMenu.price;
+      document.getElementById('editMenuDuration').value = currentMenu.duration;
+      document.getElementById('editMenuCategory').value = currentMenu.category;
+      document.getElementById('editMenuDescription').value = currentMenu.description || '';
+      document.getElementById('editMenuOrder').value = currentMenu.order || '';
+      document.getElementById('editMenuPhotoURL').value = currentMenu.photoURL || '';
+      document.getElementById('editMenuActive').checked = currentMenu.active !== false;
+      document.getElementById('editMenuPopular').checked = currentMenu.popular || false;
+      document.getElementById('editMenuRecommended').checked = currentMenu.recommended || false;
+      renderPhotoPreview();
+    }
+
+    // 写真アップロード処理
+    async function handlePhotoUpload(event) {
+      const files = Array.from(event.target.files);
+      if (files.length === 0) return;
+      
+      try {
+        for (const file of files) {
+          const fileName = `menus/${Date.now()}_${file.name}`;
+          const storageRef = storage.ref().child(fileName);
+          const snapshot = await storageRef.put(file);
+          const downloadURL = await snapshot.ref.getDownloadURL();
+          
+          uploadedPhotos.push({
+            url: downloadURL,
+            name: file.name,
+            uploadedAt: new Date().toISOString()
+          });
+        }
+        
+        renderPhotoPreview();
+        alert('写真をアップロードしました');
+        
+      } catch (error) {
+        console.error('写真アップロードエラー:', error);
+        alert('写真のアップロードに失敗しました');
+      }
+    }
+
+    // 写真プレビュー表示
+    function renderPhotoPreview() {
+      const container = document.getElementById('photoPreview');
+      container.innerHTML = '';
+      
+      uploadedPhotos.forEach((photo, index) => {
+        const preview = document.createElement('div');
+        preview.className = 'image-preview';
+        preview.innerHTML = `
+          <img src="${photo.url}" alt="メニュー写真">
+          <button class="remove-btn" onclick="removePhoto(${index})">×</button>
+        `;
+        container.appendChild(preview);
+      });
+    }
+
+    // 写真削除
+    function removePhoto(index) {
+      uploadedPhotos.splice(index, 1);
+      renderPhotoPreview();
+    }
+
+    // メニュー保存
+    async function saveMenu() {
+      try {
+        const menuData = {
+          name: document.getElementById('editMenuName').value.trim(),
+          price: parseInt(document.getElementById('editMenuPrice').value),
+          duration: parseInt(document.getElementById('editMenuDuration').value),
+          category: document.getElementById('editMenuCategory').value,
+          description: document.getElementById('editMenuDescription').value.trim(),
+          order: parseInt(document.getElementById('editMenuOrder').value) || 0,
+          photoURL: document.getElementById('editMenuPhotoURL').value.trim(),
+          active: document.getElementById('editMenuActive').checked,
+          popular: document.getElementById('editMenuPopular').checked,
+          recommended: document.getElementById('editMenuRecommended').checked,
+          photos: uploadedPhotos,
+          updatedAt: new Date().toISOString()
+        };
+        
+        // バリデーション
+        if (!menuData.name || !menuData.price || !menuData.duration) {
+          alert('メニュー名、価格、所要時間は必須です');
+          return;
+        }
+        
+        if (currentMenu) {
+          // 更新
+          await db.collection('menus').doc(currentMenu.id).update(menuData);
+          Object.assign(currentMenu, menuData);
+          const index = menusData.findIndex(m => m.id === currentMenu.id);
+          if (index !== -1) {
+            Object.assign(menusData[index], menuData);
+          }
+        } else {
+          // 新規作成
+          menuData.createdAt = new Date().toISOString();
+          const docRef = await db.collection('menus').add(menuData);
+          menuData.id = docRef.id;
+          menusData.push(menuData);
+        }
+        
+        applyFilters();
+        updateStatistics();
+        closeModal();
+        alert('メニューを保存しました');
+        
+      } catch (error) {
+        console.error('メニュー保存エラー:', error);
+        alert('メニューの保存に失敗しました');
+      }
+    }
+
+    // メニュー削除
+    async function deleteMenu() {
+      if (!currentMenu || !confirm('このメニューを削除しますか？\nこの操作は取り消せません。')) return;
+      
+      try {
+        await db.collection('menus').doc(currentMenu.id).delete();
+        
+        const index = menusData.findIndex(m => m.id === currentMenu.id);
+        if (index !== -1) {
+          menusData.splice(index, 1);
+        }
+        
+        applyFilters();
+        updateStatistics();
+        closeModal();
+        alert('メニューを削除しました');
+        
+      } catch (error) {
+        console.error('メニュー削除エラー:', error);
+        alert('メニューの削除に失敗しました');
+      }
+    }
+
+    // モーダル閉じる
+    function closeModal() {
+      document.getElementById('menuModal').classList.remove('active');
+      currentMenu = null;
+      uploadedPhotos = [];
+    }
+
+    // CSV出力
+    function exportToCSV() {
+      const headers = [
+        'メニューID', 'メニュー名', '価格', '所要時間', 'カテゴリ', 
+        '説明', '表示順序', '表示状態', '人気メニュー', 'おすすめ', '作成日時'
+      ];
+      
+      const csvData = filteredMenus.map(menu => [
+        menu.id,
+        menu.name,
+        menu.price,
+        menu.duration,
+        menu.category,
+        menu.description || '',
+        menu.order || 0,
+        menu.active ? '表示中' : '非表示',
+        menu.popular ? 'はい' : 'いいえ',
+        menu.recommended ? 'はい' : 'いいえ',
+        menu.createdAt ? new Date(menu.createdAt).toLocaleString('ja-JP') : ''
+      ]);
+      
+      const csvContent = [headers, ...csvData]
+        .map(row => row.map(field => `"${field}"`).join(','))
+        .join('\n');
+      
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `メニュー一覧_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+    }
+
+    // グローバル関数として公開
+    window.openMenuModal = openMenuModal;
+    window.removePhoto = removePhoto;
+  </script>
+</body>
+</html>

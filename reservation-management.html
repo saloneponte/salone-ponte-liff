@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>予約管理 - Salone Ponte</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .status-confirmed { @apply bg-green-100 text-green-800; }
+    .status-pending { @apply bg-yellow-100 text-yellow-800; }
+    .status-cancelled { @apply bg-red-100 text-red-800; }
+    .status-completed { @apply bg-blue-100 text-blue-800; }
+    
+    .modal {
+      @apply fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50;
+    }
+    
+    .modal.active {
+      @apply flex;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 1px;
+      background: #e5e7eb;
+      border: 1px solid #e5e7eb;
+    }
+
+    .calendar-day {
+      background: white;
+      min-height: 120px;
+      padding: 8px;
+      position: relative;
+    }
+
+    .calendar-day.other-month {
+      background: #f9fafb;
+      color: #9ca3af;
+    }
+
+    .calendar-day.today {
+      background: #dbeafe;
+    }
+
+    .reservation-slot {
+      background: #3b82f6;
+      color: white;
+      font-size: 10px;
+      padding: 2px 4px;
+      margin: 1px 0;
+      border-radius: 3px;
+      cursor: pointer;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .reservation-slot.cancelled {
+      background: #ef4444;
+    }
+
+    .reservation-slot.completed {
+      background: #10b981;
+    }
+
+    .time-slot {
+      border: 1px solid #e5e7eb;
+      padding: 8px;
+      margin: 2px 0;
+      background: white;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    .time-slot:hover {
+      background: #f3f4f6;
+    }
+
+    .time-slot.booked {
+      background: #fef3c7;
+      border-color: #f59e0b;
+    }
+
+    .time-slot.booked:hover {
+      background: #fde68a;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="container mx-auto px-4 py-6 max-w-7xl">
+    <!-- ヘッダー -->
+    <div class="flex justify-between items-center mb-8">
+      <div>
+        <div class="flex items-center gap-4 mb-2">
+          <button onclick="history.back()" class="text-gray-500 hover:text-gray-700">
+            ← ダッシュボードに戻る
+          </button>
+        </div>
+        <h1 class="text-3xl font-bold text-gray-800">📅 予約管理</h1>
+        <p class="text-gray-600">予約の確認・編集・キャンセル</p>
+      </div>
+      <div class="flex space-x-3">
+        <button id="addReservationBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+          + 新規予約追加
+        </button>
+        <button id="exportBtn" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors">
+          📊 CSV出力
+        </button>
+      </div>
+    </div>
+
+    <!-- 表示切り替えタブ -->
+    <div class="flex border-b border-gray-200 mb-6">
+      <button id="listViewBtn" class="tab-btn active px-6 py-3 text-sm font-medium border-b-2 border-blue-500 text-blue-600">
+        📋 リスト表示
+      </button>
+      <button id="calendarViewBtn" class="tab-btn px-6 py-3 text-sm font-medium text-gray-500 hover:text-gray-700">
+        📅 カレンダー表示
+      </button>
+      <button id="dayViewBtn" class="tab-btn px-6 py-3 text-sm font-medium text-gray-500 hover:text-gray-700">
+        🕐 日別詳細
+      </button>
+    </div>
+
+    <!-- 検索・フィルター -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">顧客検索</label>
+          <input type="text" id="searchInput" placeholder="顧客名・電話番号" 
+                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">ステータス</label>
+          <select id="statusFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">全て</option>
+            <option value="confirmed">確定</option>
+            <option value="pending">仮予約</option>
+            <option value="cancelled">キャンセル</option>
+            <option value="completed">完了</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">スタッフ</label>
+          <select id="staffFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">全スタッフ</option>
+            <!-- スタッフオプションは動的に生成 -->
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">期間</label>
+          <select id="periodFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="today">今日</option>
+            <option value="tomorrow">明日</option>
+            <option value="thisWeek">今週</option>
+            <option value="nextWeek">来週</option>
+            <option value="thisMonth" selected>今月</option>
+            <option value="all">全期間</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button id="resetFilter" class="w-full bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">
+            リセット
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 統計サマリー -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+            📅
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600">今日の予約</p>
+            <p class="text-2xl font-semibold text-gray-900" id="todayReservations">0</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-green-100 text-green-600">
+            ✅
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600">確定予約</p>
+            <p class="text-2xl font-semibold text-gray-900" id="confirmedReservations">0</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+            ⏳
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600">仮予約</p>
+            <p class="text-2xl font-semibold text-gray-900" id="pendingReservations">0</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-red-100 text-red-600">
+            ❌
+          </div>
+          <div class="ml-4">
+            <p class="text-sm font-medium text-gray-600">キャンセル</p>
+            <p class="text-2xl font-semibold text-gray-900" id="cancelledReservations">0</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- リスト表示 -->
+    <div id="listView" class="view-content">
+      <div class="bg-white rounded-lg shadow-md">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-semibold text-gray-900">予約一覧</h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日時</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">顧客情報</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">メニュー</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">担当</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ステータス</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">料金</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+              </tr>
+            </thead>
+            <tbody id="reservationTable" class="bg-white divide-y divide-gray-200">
+              <!-- 予約データは動的に生成 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- カレンダー表示 -->
+    <div id="calendarView" class="view-content hidden">
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="text-lg font-semibold text-gray-900">カレンダー表示</h3>
+          <div class="flex items-center gap-4">
+            <button id="prevMonth" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">‹ 前月</button>
+            <span id="currentMonth" class="text-lg font-semibold"></span>
+            <button id="nextMonth" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">次月 ›</button>
+          </div>
+        </div>
+        
+        <!-- 曜日ヘッダー -->
+        <div class="grid grid-cols-7 gap-1 mb-1">
+          <div class="text-center font-semibold text-gray-600 p-2">日</div>
+          <div class="text-center font-semibold text-gray-600 p-2">月</div>
+          <div class="text-center font-semibold text-gray-600 p-2">火</div>
+          <div class="text-center font-semibold text-gray-600 p-2">水</div>
+          <div class="text-center font-semibold text-gray-600 p-2">木</div>
+          <div class="text-center font-semibold text-gray-600 p-2">金</div>
+          <div class="text-center font-semibold text-gray-600 p-2">土</div>
+        </div>
+        
+        <!-- カレンダーグリッド -->
+        <div id="calendarGrid" class="calendar-grid">
+          <!-- カレンダーは動的に生成 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 日別詳細表示 -->
+    <div id="dayView" class="view-content hidden">
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="text-lg font-semibold text-gray-900">日別詳細</h3>
+          <div class="flex items-center gap-4">
+            <input type="date" id="selectedDate" class="px-3 py-2 border rounded">
+            <select id="selectedStaffForDay" class="px-3 py-2 border rounded">
+              <option value="">全スタッフ</option>
+              <!-- スタッフオプションは動的に生成 -->
+            </select>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- タイムスロット表示 -->
+          <div>
+            <h4 class="font-semibold mb-4">タイムスロット</h4>
+            <div id="timeSlots" class="space-y-1">
+              <!-- タイムスロットは動的に生成 -->
+            </div>
+          </div>
+          
+          <!-- 当日予約一覧 -->
+          <div>
+            <h4 class="font-semibold mb-4">当日の予約</h4>
+            <div id="dayReservations" class="space-y-3">
+              <!-- 当日予約は動的に生成 -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 予約詳細モーダル -->
+  <div id="reservationModal" class="modal">
+    <div class="bg-white rounded-lg w-full max-w-2xl mx-4 max-h-full overflow-y-auto">
+      <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+        <h3 class="text-lg font-semibold text-gray-900">予約詳細</h3>
+        <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h4 class="font-semibold mb-4">予約情報</h4>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700">日時</label>
+                <input type="datetime-local" id="editDateTime" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">顧客名</label>
+                <input type="text" id="editCustomerName" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" readonly>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">電話番号</label>
+                <input type="tel" id="editCustomerPhone" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">メニュー</label>
+                <select id="editMenu" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                  <!-- メニューオプションは動的に生成 -->
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <div>
+            <h4 class="font-semibold mb-4">担当・料金</h4>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700">担当スタッフ</label>
+                <select id="editStaff" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                  <!-- スタッフオプションは動的に生成 -->
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">料金</label>
+                <input type="number" id="editPrice" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">ステータス</label>
+                <select id="editStatus" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                  <option value="confirmed">確定</option>
+                  <option value="pending">仮予約</option>
+                  <option value="cancelled">キャンセル</option>
+                  <option value="completed">完了</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">備考</label>
+                <textarea id="editNote" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mt-6 flex justify-between">
+          <button id="deleteReservationBtn" class="bg-red-500 text-white px-6 py-2 rounded-md hover:bg-red-600">
+            削除
+          </button>
+          <div class="flex gap-3">
+            <button id="cancelReservationBtn" class="bg-yellow-500 text-white px-6 py-2 rounded-md hover:bg-yellow-600">
+              キャンセル
+            </button>
+            <button id="saveReservationBtn" class="bg-green-500 text-white px-6 py-2 rounded-md hover:bg-green-600">
+              保存
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+  <script>
+    // Firebase 初期化
+    const firebaseConfig = {
+      apiKey: "AIzaSyAK14FMyp7VGYZPakGDmLdgHsvvxT-b0TM",
+      authDomain: "salone-ponte-fceca.firebaseapp.com",
+      projectId: "salone-ponte-fceca",
+      storageBucket: "salone-ponte-fceca.appspot.com",
+      messagingSenderId: "463711728652",
+      appId: "1:463711728652:web:59c749e11d201b26b86a29",
+      measurementId: "G-MPWGTB6R7C"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // 営業時間設定
+    const BUSINESS_HOURS = [
+      '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+      '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
+      '16:00', '16:30', '17:00', '17:30', '18:00', '18:30'
+    ];
+
+    // グローバル変数
+    let reservationsData = [];
+    let customersData = [];
+    let menusData = [];
+    let staffsData = [];
+    let filteredReservations = [];
+    let currentReservation = null;
+    let currentView = 'list';
+    let currentMonth = new Date();
+
+    // 初期化
+    document.addEventListener('DOMContentLoaded', function() {
+      loadAllData();
+      setupEventListeners();
+      setDefaultDate();
+    });
+
+    // 全データ読み込み
+    async function loadAllData() {
+      try {
+        await Promise.all([
+          loadReservations(),
+          loadCustomers(),
+          loadMenus(),
+          loadStaffs()
+        ]);
+        
+        setupFilters();
+        renderCurrentView();
+        updateStatistics();
+        
+      } catch (error) {
+        console.error('データ読み込みエラー:', error);
+        alert('データの読み込みに失敗しました');
+      }
+    }
+
+    // 予約データ読み込み
+    async function loadReservations() {
+      const snapshot = await db.collection('reservations').orderBy('datetime', 'desc').get();
+      reservationsData = [];
+      
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        reservationsData.push({
+          id: doc.id,
+          ...data,
+          datetime: new Date(data.datetime)
+        });
+      });
+      
+      filteredReservations = [...reservationsData];
+    }
+
+    // 顧客データ読み込み
+    async function loadCustomers() {
+      const snapshot = await db.collection('customers').get();
+      customersData = [];
+      
+      snapshot.forEach(doc => {
+        customersData.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+    }
+
+    // メニューデータ読み込み
+    async function loadMenus() {
+      const snapshot = await db.collection('menus').get();
+      menusData = [];
+      
+      snapshot.forEach(doc => {
+        menusData.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+    }
+
+    // スタッフデータ読み込み
+    async function loadStaffs() {
+      const snapshot = await db.collection('staffs').get();
+      staffsData = [];
+      
+      snapshot.forEach(doc => {
+        staffsData.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+    }
+
+    // イベントリスナー設定
+    function setupEventListeners() {
+      // 表示切り替え
+      document.getElementById('listViewBtn').addEventListener('click', () => switchView('list'));
+      document.getElementById('calendarViewBtn').addEventListener('click', () => switchView('calendar'));
+      document.getElementById('dayViewBtn').addEventListener('click', () => switchView('day'));
+
+      // フィルター
+      document.getElementById('searchInput').addEventListener('input', applyFilters);
+      document.getElementById('statusFilter').addEventListener('change', applyFilters);
+      document.getElementById('staffFilter').addEventListener('change', applyFilters);
+      document.getElementById('periodFilter').addEventListener('change', applyFilters);
+      document.getElementById('resetFilter').addEventListener('click', resetFilters);
+
+      // カレンダーナビゲーション
+      document.getElementById('prevMonth').addEventListener('click', () => changeMonth(-1));
+      document.getElementById('nextMonth').addEventListener('click', () => changeMonth(1));
+
+      // 日別表示
+      document.getElementById('selectedDate').addEventListener('change', renderDayView);
+      document.getElementById('selectedStaffForDay').addEventListener('change', renderDayView);
+
+      // モーダル
+      document.getElementById('closeModal').addEventListener('click', closeModal);
+      document.getElementById('saveReservationBtn').addEventListener('click', saveReservation);
+      document.getElementById('cancelReservationBtn').addEventListener('click', cancelReservation);
+      document.getElementById('deleteReservationBtn').addEventListener('click', deleteReservation);
+
+      // 新規予約・CSV出力
+      document.getElementById('addReservationBtn').addEventListener('click', addNewReservation);
+      document.getElementById('exportBtn').addEventListener('click', exportToCSV);
+    }
+
+    // フィルター設定
+    function setupFilters() {
+      // スタッフフィルター
+      const staffFilters = [
+        document.getElementById('staffFilter'),
+        document.getElementById('selectedStaffForDay')
+      ];
+      
+      staffFilters.forEach(select => {
+        select.innerHTML = '<option value="">全スタッフ</option>';
+        staffsData.forEach(staff => {
+          const option = document.createElement('option');
+          option.value = staff.id;
+          option.textContent = staff.name;
+          select.appendChild(option);
+        });
+      });
+
+      // モーダル用メニュー・スタッフ
+      const menuSelect = document.getElementById('editMenu');
+      menuSelect.innerHTML = '';
+      menusData.forEach(menu => {
+        const option = document.createElement('option');
+        option.value = menu.id;
+        option.textContent = `${menu.name} (¥${menu.price.toLocaleString()})`;
+        menuSelect.appendChild(option);
+      });
+
+      const staffSelect = document.getElementById('editStaff');
+      staffSelect.innerHTML = '';
+      staffsData.forEach(staff => {
+        const option = document.createElement('option');
+        option.value = staff.id;
+        option.textContent = staff.name;
+        staffSelect.appendChild(option);
+      });
+    }
+
+    // デフォルト日付設定
+    function setDefaultDate() {
+      const today = new Date();
+      document.getElementById('selectedDate').value = today.toISOString().split('T')[0];
+    }
+
+    // 表示切り替え
+    function switchView(view) {
+      currentView = view;
+      
+      // タブボタンの状態更新
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active', 'border-blue-500', 'text-blue-600');
+        btn.classList.add('text-gray-500');
+      });
+      
+      document.getElementById(`${view}ViewBtn`).classList.add('active', 'border-blue-500', 'text-blue-600');
+      document.getElementById(`${view}ViewBtn`).classList.remove('text-gray-500');
+      
+      // ビューの表示切り替え
+      document.querySelectorAll('.view-content').forEach(content => {
+        content.classList.add('hidden');
+      });
+      document.getElementById(`${view}View`).classList.remove('hidden');
+      
+      renderCurrentView();
+    }
+
+    // 現在のビューを描画
+    function renderCurrentView() {
+      switch (currentView) {
+        case 'list':
+          renderReservationList();
+          break;
+        case 'calendar':
+          renderCalendar();
+          break;
+        case 'day':
+          renderDayView();
+          break;
+      }
+    }
+
+    // 予約一覧描画
+    function renderReservationList() {
+      const tbody = document.getElementById('reservationTable');
+      tbody.innerHTML = '';
+
+      filteredReservations.forEach(reservation => {
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-gray-50 cursor-pointer';
+        
+        const statusClass = `status-${reservation.status}`;
+        const statusText = getStatusText(reservation.status);
+        
+        row.innerHTML = `
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            <div>${reservation.datetime.toLocaleDateString('ja-JP')}</div>
+            <div class="text-gray-500">${reservation.datetime.toLocaleTimeString('ja-JP', {hour: '2-digit', minute: '2-digit'})}</div>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap">
+            <div class="text-sm font-medium text-gray-900">${reservation.name}</div>
+            <div class="text-sm text-gray-500">${reservation.phone || ''}</div>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            ${reservation.menuName}
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            ${reservation.staffName}
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap">
+            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
+              ${statusText}
+            </span>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            ¥${(reservation.menuPrice || 0).toLocaleString()}
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+            <button onclick="openReservationModal('${reservation.id}')" 
+                    class="text-blue-600 hover:text-blue-900">詳細</button>
+          </td>
+        `;
+        
+        tbody.appendChild(row);
+      });
+    }
+
+    // カレンダー描画
+    function renderCalendar() {
+      const grid = document.getElementById('calendarGrid');
+      grid.innerHTML = '';
+      
+      document.getElementById('currentMonth').textContent = 
+        `${currentMonth.getFullYear()}年${currentMonth.getMonth() + 1}月`;
+
+      const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+      const lastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+      const startDate = new Date(firstDay);
+      startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      for (let i = 0; i < 42; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        
+        const dayElement = document.createElement('div');
+        dayElement.className = 'calendar-day';
+        
+        if (date.getMonth() !== currentMonth.getMonth()) {
+          dayElement.classList.add('other-month');
+        }
+        
+        if (date.getTime() === today.getTime()) {
+          dayElement.classList.add('today');
+        }
+        
+        dayElement.innerHTML = `<div class="font-semibold">${date.getDate()}</div>`;
+        
+        // その日の予約を表示
+        const dayReservations = filteredReservations.filter(res => {
+          const resDate = new Date(res.datetime);
+          return resDate.toDateString() === date.toDateString();
+        });
+        
+        dayReservations.forEach(res => {
+          const slot = document.createElement('div');
+          slot.className = `reservation-slot ${res.status}`;
+          slot.textContent = `${res.datetime.toLocaleTimeString('ja-JP', {hour: '2-digit', minute: '2-digit'})} ${res.name}`;
+          slot.onclick = () => openReservationModal(res.id);
+          dayElement.appendChild(slot);
+        });
+        
+        grid.appendChild(dayElement);
+      }
+    }
+
+    // 日別詳細描画
+    function renderDayView() {
+      const selectedDate = new Date(document.getElementById('selectedDate').value);
+      const selectedStaff = document.getElementById('selectedStaffForDay').value;
+      
+      renderTimeSlots(selectedDate, selectedStaff);
+      renderDayReservations(selectedDate, selectedStaff);
+    }
+
+    // タイムスロット描画
+    function renderTimeSlots(date, staffId) {
+      const container = document.getElementById('timeSlots');
+      container.innerHTML = '';
+      
+      BUSINESS_HOURS.forEach(timeStr => {
+        const slot = document.createElement('div');
+        slot.className = 'time-slot';
+        
+        const slotTime = new Date(date);
+        const [hours, minutes] = timeStr.split(':');
+        slotTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        
+        // 予約があるかチェック
+        const hasReservation = filteredReservations.some(res => {
+          const resDate = new Date(res.datetime);
+          return resDate.getTime() === slotTime.getTime() && 
+                 (!staffId || res.staffId === staffId) &&
+                 res.status !== 'cancelled';
+        });
+        
+        if (hasReservation) {
+          slot.classList.add('booked');
+          const reservation = filteredReservations.find(res => {
+            const resDate = new Date(res.datetime);
+            return resDate.getTime() === slotTime.getTime() && 
+                   (!staffId || res.staffId === staffId) &&
+                   res.status !== 'cancelled';
+          });
+          slot.textContent = `${timeStr} - ${reservation.name} (${reservation.menuName})`;
+          slot.onclick = () => openReservationModal(reservation.id);
+        } else {
+          slot.textContent = `${timeStr} - 空き`;
+          slot.onclick = () => createReservationAtTime(slotTime, staffId);
+        }
+        
+        container.appendChild(slot);
+      });
+    }
+
+    // 当日予約一覧描画
+    function renderDayReservations(date, staffId) {
+      const container = document.getElementById('dayReservations');
+      container.innerHTML = '';
+      
+      const dayReservations = filteredReservations.filter(res => {
+        const resDate = new Date(res.datetime);
+        return resDate.toDateString() === date.toDateString() &&
+               (!staffId || res.staffId === staffId);
+      }).sort((a, b) => a.datetime - b.datetime);
+      
+      if (dayReservations.length === 0) {
+        container.innerHTML = '<p class="text-gray-500">予約がありません</p>';
+        return;
+      }
+      
+      dayReservations.forEach(res => {
+        const item = document.createElement('div');
+        item.className = 'bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-gray-100';
+        item.onclick = () => openReservationModal(res.id);
+        
+        const statusClass = `status-${res.status}`;
+        const statusText = getStatusText(res.status);
+        
+        item.innerHTML = `
+          <div class="flex justify-between items-start mb-2">
+            <div class="font-semibold">${res.datetime.toLocaleTimeString('ja-JP', {hour: '2-digit', minute: '2-digit'})}</div>
+            <span class="px-2 py-1 text-xs rounded-full ${statusClass}">${statusText}</span>
+          </div>
+          <div class="text-sm text-gray-600">
+            <p>${res.name} - ${res.menuName}</p>
+            <p>担当: ${res.staffName}</p>
+            <p>料金: ¥${(res.menuPrice || 0).toLocaleString()}</p>
+          </div>
+        `;
+        
+        container.appendChild(item);
+      });
+    }
+
+    // ステータステキスト取得
+    function getStatusText(status) {
+      const statusMap = {
+        confirmed: '確定',
+        pending: '仮予約',
+        cancelled: 'キャンセル',
+        completed: '完了'
+      };
+      return statusMap[status] || status;
+    }
+
+    // フィルター適用
+    function applyFilters() {
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      const statusFilter = document.getElementById('statusFilter').value;
+      const staffFilter = document.getElementById('staffFilter').value;
+      const periodFilter = document.getElementById('periodFilter').value;
+      
+      filteredReservations = reservationsData.filter(reservation => {
+        // 検索フィルター
+        if (searchTerm) {
+          const nameMatch = reservation.name.toLowerCase().includes(searchTerm);
+          const phoneMatch = (reservation.phone || '').toLowerCase().includes(searchTerm);
+          if (!nameMatch && !phoneMatch) return false;
+        }
+        
+        // ステータスフィルター
+        if (statusFilter && reservation.status !== statusFilter) {
+          return false;
+        }
+        
+        // スタッフフィルター
+        if (staffFilter && reservation.staffId !== staffFilter) {
+          return false;
+        }
+        
+        // 期間フィルター
+        if (periodFilter !== 'all') {
+          const now = new Date();
+          const resDate = new Date(reservation.datetime);
+          
+          switch (periodFilter) {
+            case 'today':
+              if (resDate.toDateString() !== now.toDateString()) return false;
+              break;
+            case 'tomorrow':
+              const tomorrow = new Date(now);
+              tomorrow.setDate(tomorrow.getDate() + 1);
+              if (resDate.toDateString() !== tomorrow.toDateString()) return false;
+              break;
+            case 'thisWeek':
+              const weekStart = new Date(now);
+              weekStart.setDate(now.getDate() - now.getDay());
+              const weekEnd = new Date(weekStart);
+              weekEnd.setDate(weekStart.getDate() + 6);
+              if (resDate < weekStart || resDate > weekEnd) return false;
+              break;
+            case 'nextWeek':
+              const nextWeekStart = new Date(now);
+              nextWeekStart.setDate(now.getDate() - now.getDay() + 7);
+              const nextWeekEnd = new Date(nextWeekStart);
+              nextWeekEnd.setDate(nextWeekStart.getDate() + 6);
+              if (resDate < nextWeekStart || resDate > nextWeekEnd) return false;
+              break;
+            case 'thisMonth':
+              if (resDate.getMonth() !== now.getMonth() || resDate.getFullYear() !== now.getFullYear()) {
+                return false;
+              }
+              break;
+          }
+        }
+        
+        return true;
+      });
+      
+      renderCurrentView();
+      updateStatistics();
+    }
+
+    // フィルターリセット
+    function resetFilters() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('statusFilter').value = '';
+      document.getElementById('staffFilter').value = '';
+      document.getElementById('periodFilter').value = 'thisMonth';
+      filteredReservations = [...reservationsData];
+      renderCurrentView();
+      updateStatistics();
+    }
+
+    // 統計更新
+    function updateStatistics() {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      const todayCount = filteredReservations.filter(res => {
+        const resDate = new Date(res.datetime);
+        resDate.setHours(0, 0, 0, 0);
+        return resDate.getTime() === today.getTime();
+      }).length;
+      
+      const confirmedCount = filteredReservations.filter(res => res.status === 'confirmed').length;
+      const pendingCount = filteredReservations.filter(res => res.status === 'pending').length;
+      const cancelledCount = filteredReservations.filter(res => res.status === 'cancelled').length;
+      
+      document.getElementById('todayReservations').textContent = todayCount;
+      document.getElementById('confirmedReservations').textContent = confirmedCount;
+      document.getElementById('pendingReservations').textContent = pendingCount;
+      document.getElementById('cancelledReservations').textContent = cancelledCount;
+    }
+
+    // 月変更
+    function changeMonth(direction) {
+      currentMonth.setMonth(currentMonth.getMonth() + direction);
+      renderCalendar();
+    }
+
+    // 予約詳細モーダル開く
+    function openReservationModal(reservationId) {
+      currentReservation = reservationsData.find(r => r.id === reservationId);
+      if (!currentReservation) return;
+      
+      loadReservationToModal();
+      document.getElementById('reservationModal').classList.add('active');
+    }
+
+    // 予約情報をモーダルに読み込み
+    function loadReservationToModal() {
+      document.getElementById('editDateTime').value = 
+        currentReservation.datetime.toISOString().slice(0, 16);
+      document.getElementById('editCustomerName').value = currentReservation.name;
+      document.getElementById('editCustomerPhone').value = currentReservation.phone || '';
+      document.getElementById('editMenu').value = currentReservation.menuId;
+      document.getElementById('editStaff').value = currentReservation.staffId;
+      document.getElementById('editPrice').value = currentReservation.menuPrice || 0;
+      document.getElementById('editStatus').value = currentReservation.status;
+      document.getElementById('editNote').value = currentReservation.note || '';
+    }
+
+    // モーダル閉じる
+    function closeModal() {
+      document.getElementById('reservationModal').classList.remove('active');
+      currentReservation = null;
+    }
+
+    // 予約保存
+    async function saveReservation() {
+      if (!currentReservation) return;
+      
+      try {
+        const updatedData = {
+          datetime: new Date(document.getElementById('editDateTime').value).toISOString(),
+          phone: document.getElementById('editCustomerPhone').value,
+          menuId: document.getElementById('editMenu').value,
+          staffId: document.getElementById('editStaff').value,
+          menuPrice: parseInt(document.getElementById('editPrice').value),
+          status: document.getElementById('editStatus').value,
+          note: document.getElementById('editNote').value,
+          updatedAt: new Date().toISOString()
+        };
+        
+        // メニュー・スタッフ名を取得
+        const menu = menusData.find(m => m.id === updatedData.menuId);
+        const staff = staffsData.find(s => s.id === updatedData.staffId);
+        
+        if (menu) {
+          updatedData.menuName = menu.name;
+          if (!updatedData.menuPrice) updatedData.menuPrice = menu.price;
+        }
+        if (staff) {
+          updatedData.staffName = staff.name;
+        }
+        
+        await db.collection('reservations').doc(currentReservation.id).update(updatedData);
+        
+        // ローカルデータ更新
+        Object.assign(currentReservation, updatedData);
+        currentReservation.datetime = new Date(updatedData.datetime);
+        
+        const index = reservationsData.findIndex(r => r.id === currentReservation.id);
+        if (index !== -1) {
+          Object.assign(reservationsData[index], currentReservation);
+        }
+        
+        applyFilters();
+        closeModal();
+        alert('予約を更新しました');
+        
+      } catch (error) {
+        console.error('予約更新エラー:', error);
+        alert('予約の更新に失敗しました');
+      }
+    }
+
+    // 予約キャンセル
+    async function cancelReservation() {
+      if (!currentReservation || !confirm('この予約をキャンセルしますか？')) return;
+      
+      try {
+        await db.collection('reservations').doc(currentReservation.id).update({
+          status: 'cancelled',
+          updatedAt: new Date().toISOString()
+        });
+        
+        currentReservation.status = 'cancelled';
+        const index = reservationsData.findIndex(r => r.id === currentReservation.id);
+        if (index !== -1) {
+          reservationsData[index].status = 'cancelled';
+        }
+        
+        applyFilters();
+        closeModal();
+        alert('予約をキャンセルしました');
+        
+      } catch (error) {
+        console.error('予約キャンセルエラー:', error);
+        alert('予約のキャンセルに失敗しました');
+      }
+    }
+
+    // 予約削除
+    async function deleteReservation() {
+      if (!currentReservation || !confirm('この予約を完全に削除しますか？\nこの操作は取り消せません。')) return;
+      
+      try {
+        await db.collection('reservations').doc(currentReservation.id).delete();
+        
+        const index = reservationsData.findIndex(r => r.id === currentReservation.id);
+        if (index !== -1) {
+          reservationsData.splice(index, 1);
+        }
+        
+        applyFilters();
+        closeModal();
+        alert('予約を削除しました');
+        
+      } catch (error) {
+        console.error('予約削除エラー:', error);
+        alert('予約の削除に失敗しました');
+      }
+    }
+
+    // 指定時間に新規予約作成
+    function createReservationAtTime(datetime, staffId) {
+      // LIFF予約システムへリダイレクト
+      const params = new URLSearchParams({
+        datetime: datetime.toISOString(),
+        staffId: staffId || ''
+      });
+      window.open(`/src/pages/index.html?${params}`, '_blank');
+    }
+
+    // 新規予約追加
+    function addNewReservation() {
+      // LIFF予約システムへリダイレクト
+      window.open('/src/pages/index.html', '_blank');
+    }
+
+    // CSV出力
+    function exportToCSV() {
+      const headers = [
+        '予約ID', '日時', '顧客名', '電話番号', 'メニュー', 
+        '担当スタッフ', 'ステータス', '料金', '備考', '作成日時'
+      ];
+      
+      const csvData = filteredReservations.map(reservation => [
+        reservation.id,
+        reservation.datetime.toLocaleString('ja-JP'),
+        reservation.name,
+        reservation.phone || '',
+        reservation.menuName,
+        reservation.staffName,
+        getStatusText(reservation.status),
+        reservation.menuPrice || 0,
+        reservation.note || '',
+        reservation.createdAt ? new Date(reservation.createdAt).toLocaleString('ja-JP') : ''
+      ]);
+      
+      const csvContent = [headers, ...csvData]
+        .map(row => row.map(field => `"${field}"`).join(','))
+        .join('\n');
+      
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `予約一覧_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+    }
+
+    // グローバル関数として公開
+    window.openReservationModal = openReservationModal;
+  </script>
+</body>
+</html>
