@@ -300,14 +300,6 @@ function updateRecentActivity() {
 
 // イベントリスナー設定
 function setupEventListeners() {
-  // タブ切り替え
-  document.querySelectorAll('[data-tab]').forEach(button => {
-    button.addEventListener('click', (e) => {
-      const tab = e.target.getAttribute('data-tab');
-      switchTab(tab);
-    });
-  });
-  
   // サイドナビトグル
   const menuToggle = document.getElementById('menuToggle');
   const sideNav = document.getElementById('sideNav');
