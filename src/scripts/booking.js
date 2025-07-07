@@ -52,7 +52,17 @@ function setupEventListeners() {
   // ナビゲーションボタン
   document.getElementById('menuNextBtn').onclick = () => goToStep(2);
   document.getElementById('staffNextBtn').onclick = () => goToStep(3);
-  document.getElementById('datetimeNextBtn').onclick = () => goToStep(4);
+  document.getElementById('datetimeNextBtn').onclick = () => {
+    // 週間スケジュールから選択された日時を取得
+    if (typeof weeklySchedule !== 'undefined') {
+      const selectedDateTime = weeklySchedule.getSelectedDateTime();
+      if (selectedDateTime) {
+        selectedDate = selectedDateTime.toISOString().split('T')[0];
+        selectedTime = selectedDateTime.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+        goToStep(4);
+      }
+    }
+  };
   
   document.getElementById('staffBackBtn').onclick = () => goToStep(1);
   document.getElementById('datetimeBackBtn').onclick = () => goToStep(2);
@@ -98,7 +108,16 @@ async function goToStep(step) {
     updateProgress(progressConfig.STAFF.percent);
   } else if (step === 3) {
     document.getElementById('datetimeSection').classList.add('active');
-    await renderCalendar();
+    // 週間スケジュール表示に変更
+    if (typeof weeklySchedule !== 'undefined') {
+      weeklySchedule.reset();
+      if (selectedStaff) {
+        weeklySchedule.updateForStaff(selectedStaff.id);
+      }
+      if (selectedMenu) {
+        weeklySchedule.updateForMenu(selectedMenu.id, selectedMenu.duration);
+      }
+    }
     updateProgress(progressConfig.DATETIME.percent);
   } else if (step === 4) {
     document.getElementById('confirmSection').classList.add('active');

@@ -1,0 +1,593 @@
+/* Mobile Responsive Enhancements - Salone Ponte Dashboard */
+
+/* モバイル基本設定 */
+@media (max-width: 768px) {
+  
+  /* フォントサイズ調整 */
+  body {
+    font-size: 14px;
+  }
+  
+  h1 {
+    font-size: 1.5rem !important;
+  }
+  
+  h2 {
+    font-size: 1.25rem !important;
+  }
+  
+  h3 {
+    font-size: 1.125rem !important;
+  }
+  
+  /* サイドナビゲーション */
+  .side-nav {
+    width: 280px;
+    z-index: 50;
+  }
+  
+  /* メインコンテンツ */
+  .main-content {
+    margin-left: 0 !important;
+    padding: 0;
+  }
+  
+  /* トップバー */
+  .top-bar {
+    padding: 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  
+  /* 統計カード */
+  .stat-card {
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .stat-card .icon-container {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+  
+  .stat-card h3 {
+    font-size: 1.5rem;
+  }
+  
+  .stat-card p {
+    font-size: 0.75rem;
+  }
+  
+  /* チャートコンテナ */
+  .chart-container {
+    height: 200px;
+    margin: 1rem 0;
+  }
+  
+  /* グリッドレイアウト調整 */
+  .grid-cols-1 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+  
+  .md\:grid-cols-2 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+  
+  .xl\:grid-cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  
+  .xl\:grid-cols-3 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+  
+  /* コンテンツパディング */
+  .content-padding {
+    padding: 1rem;
+  }
+  
+  /* ボタン調整 */
+  .action-btn {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
+  
+  .action-btn .material-icons {
+    font-size: 1rem;
+  }
+  
+  /* スケジュールアイテム */
+  .schedule-item {
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .schedule-item .time {
+    font-size: 0.875rem;
+  }
+  
+  .schedule-item .title {
+    font-size: 1rem;
+  }
+  
+  /* アクティビティアイテム */
+  .activity-item {
+    padding: 0.75rem;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .activity-item .icon {
+    margin-bottom: 0.5rem;
+  }
+  
+  /* テーブル */
+  table {
+    font-size: 0.75rem;
+  }
+  
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* モーダル */
+  .modal-content {
+    margin: 1rem;
+    max-height: calc(100vh - 2rem);
+    width: calc(100vw - 2rem);
+  }
+  
+  /* フォーム */
+  .form-group {
+    margin-bottom: 1rem;
+  }
+  
+  .form-input {
+    padding: 0.75rem;
+    font-size: 1rem;
+  }
+  
+  /* 通知 */
+  .notification {
+    margin: 0.5rem;
+    max-width: calc(100vw - 1rem);
+  }
+  
+  /* スクロールバー */
+  .custom-scrollbar {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* ホバー効果を無効化 */
+  .hover-lift:hover {
+    transform: none;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  }
+  
+  /* タッチ対応 */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* スタッフステータス */
+  .staff-status-item {
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .staff-avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+  
+  /* 人気メニュー */
+  .menu-item {
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  /* ナビゲーションアイテム */
+  .nav-item {
+    padding: 1rem;
+    font-size: 1rem;
+  }
+  
+  .nav-item .material-icons {
+    font-size: 1.25rem;
+  }
+  
+  /* 統計プログレスバー */
+  .progress-bar {
+    height: 0.5rem;
+    margin-top: 0.5rem;
+  }
+  
+  /* クイックアクション */
+  .quick-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+  
+  .quick-action-btn {
+    padding: 1rem 0.5rem;
+    font-size: 0.75rem;
+    text-align: center;
+  }
+  
+  /* 隠し要素 */
+  .mobile-hide {
+    display: none !important;
+  }
+  
+  /* モバイル専用表示 */
+  .mobile-show {
+    display: block !important;
+  }
+  
+  /* フレックス方向変更 */
+  .mobile-stack {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+  
+  /* フル幅 */
+  .mobile-full {
+    width: 100% !important;
+  }
+  
+  /* テキスト中央揃え */
+  .mobile-center {
+    text-align: center !important;
+  }
+  
+  /* パディング調整 */
+  .mobile-p-2 {
+    padding: 0.5rem !important;
+  }
+  
+  .mobile-p-4 {
+    padding: 1rem !important;
+  }
+  
+  /* マージン調整 */
+  .mobile-m-2 {
+    margin: 0.5rem !important;
+  }
+  
+  .mobile-m-4 {
+    margin: 1rem !important;
+  }
+  
+  /* セーフエリア対応 */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* タブレット対応 */
+@media (min-width: 769px) and (max-width: 1024px) {
+  
+  /* グリッド調整 */
+  .xl\:grid-cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  
+  .xl\:grid-cols-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  
+  /* チャート高さ調整 */
+  .chart-container {
+    height: 250px;
+  }
+  
+  /* サイドナビ */
+  .side-nav {
+    width: 240px;
+  }
+  
+  /* フォントサイズ */
+  body {
+    font-size: 15px;
+  }
+}
+
+/* 小さなモバイル画面 */
+@media (max-width: 480px) {
+  
+  /* さらに小さなフォント */
+  body {
+    font-size: 13px;
+  }
+  
+  h1 {
+    font-size: 1.25rem !important;
+  }
+  
+  h2 {
+    font-size: 1.125rem !important;
+  }
+  
+  h3 {
+    font-size: 1rem !important;
+  }
+  
+  /* 統計カードを縦積み */
+  .xl\:grid-cols-4 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+  
+  /* より小さなパディング */
+  .content-padding {
+    padding: 0.75rem;
+  }
+  
+  .stat-card {
+    padding: 0.75rem;
+  }
+  
+  /* チャート高さ縮小 */
+  .chart-container {
+    height: 180px;
+  }
+  
+  /* ボタンサイズ調整 */
+  .action-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+  
+  /* アイコンサイズ */
+  .material-icons {
+    font-size: 1rem !important;
+  }
+  
+  /* 統計数値 */
+  .stat-value {
+    font-size: 1.5rem !important;
+  }
+  
+  /* クイックアクション */
+  .quick-actions {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+  
+  /* ナビゲーション */
+  .nav-item {
+    padding: 0.75rem;
+  }
+  
+  /* スケジュールとアクティビティ */
+  .schedule-item,
+  .activity-item,
+  .staff-status-item,
+  .menu-item {
+    padding: 0.5rem;
+  }
+  
+  /* アバターサイズ */
+  .staff-avatar {
+    width: 2rem;
+    height: 2rem;
+  }
+  
+  .icon-container {
+    width: 2rem !important;
+    height: 2rem !important;
+  }
+  
+  /* プログレスバー */
+  .progress-bar {
+    height: 0.375rem;
+  }
+  
+  /* 通知サイズ */
+  .notification {
+    padding: 0.5rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* ダークモード対応 */
+@media (prefers-color-scheme: dark) {
+  .dark-mode-ready {
+    background-color: #111827;
+    color: #f9fafb;
+  }
+  
+  .dark-mode-ready .bg-white {
+    background-color: #1f2937;
+  }
+  
+  .dark-mode-ready .text-gray-900 {
+    color: #f9fafb;
+  }
+  
+  .dark-mode-ready .text-gray-600 {
+    color: #d1d5db;
+  }
+  
+  .dark-mode-ready .text-gray-500 {
+    color: #9ca3af;
+  }
+  
+  .dark-mode-ready .border-gray-200 {
+    border-color: #374151;
+  }
+  
+  .dark-mode-ready .bg-gray-50 {
+    background-color: #111827;
+  }
+  
+  .dark-mode-ready .bg-gray-100 {
+    background-color: #1f2937;
+  }
+}
+
+/* ランドスケープモード */
+@media (max-width: 768px) and (orientation: landscape) {
+  
+  /* サイドナビを上部に移動 */
+  .side-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: auto;
+    max-height: 60vh;
+    overflow-y: auto;
+    transform: translateY(-100%);
+    transition: transform 0.3s ease;
+  }
+  
+  .side-nav.active {
+    transform: translateY(0);
+  }
+  
+  /* ナビゲーションアイテムを横並び */
+  .nav-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 1rem;
+  }
+  
+  .nav-item {
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+    padding: 0.75rem 0.5rem;
+  }
+  
+  /* チャート高さ調整 */
+  .chart-container {
+    height: 150px;
+  }
+  
+  /* 統計カードを横並び */
+  .xl\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  
+  .stat-card {
+    padding: 0.75rem;
+  }
+  
+  .stat-card h3 {
+    font-size: 1.25rem;
+  }
+}
+
+/* アクセシビリティ */
+@media (prefers-reduced-motion: reduce) {
+  
+  /* アニメーション無効化 */
+  .animate-slide-in-right,
+  .animate-slide-in-up,
+  .animate-pulse-custom,
+  .loading-shimmer {
+    animation: none !important;
+  }
+  
+  /* トランジション無効化 */
+  * {
+    transition: none !important;
+  }
+  
+  /* ホバー効果無効化 */
+  .hover-lift {
+    transform: none !important;
+  }
+}
+
+/* 高コントラストモード */
+@media (prefers-contrast: high) {
+  
+  /* ボーダーを強調 */
+  .border {
+    border-width: 2px !important;
+  }
+  
+  /* テキストコントラスト強化 */
+  .text-gray-600 {
+    color: #374151 !important;
+  }
+  
+  .text-gray-500 {
+    color: #4b5563 !important;
+  }
+  
+  /* ボタンコントラスト強化 */
+  .action-btn {
+    border: 2px solid currentColor;
+  }
+  
+  /* アイコンコントラスト */
+  .material-icons {
+    font-weight: bold;
+  }
+}
+
+/* プリント対応 */
+@media print {
+  
+  /* 不要要素を非表示 */
+  .side-nav,
+  .menu-overlay,
+  .notification,
+  button,
+  .action-btn {
+    display: none !important;
+  }
+  
+  /* プリント用レイアウト */
+  .main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* 色を調整 */
+  * {
+    color: #000 !important;
+    background: #fff !important;
+  }
+  
+  /* ページ区切り */
+  .stat-card,
+  .chart-container {
+    page-break-inside: avoid;
+  }
+  
+  /* フォントサイズ調整 */
+  body {
+    font-size: 12pt;
+  }
+  
+  h1 {
+    font-size: 18pt;
+  }
+  
+  h2 {
+    font-size: 16pt;
+  }
+  
+  h3 {
+    font-size: 14pt;
+  }
+}

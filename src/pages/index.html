@@ -7,6 +7,7 @@
   <!-- CSS読み込み -->
   <link rel="stylesheet" href="/src/styles/common.css">
   <link rel="stylesheet" href="/src/styles/booking.css">
+  <link rel="stylesheet" href="/src/styles/weekly-schedule.css">
 </head>
 <body>
   <div class="container">
@@ -71,30 +72,34 @@
     <div id="datetimeSection" class="section">
       <div class="section-title">ご希望の日時を選択してください</div>
       
-      <div class="datetime-section">
-        <div class="date-picker">
-          <div class="calendar-nav">
-            <button id="prevMonthBtn">‹ 前月</button>
-            <div id="currentMonth" class="calendar-month"></div>
-            <button id="nextMonthBtn">次月 ›</button>
-          </div>
-          
-          <div id="calendarGrid" class="date-grid">
-            <!-- 曜日ヘッダー -->
-            <div class="date-header">日</div>
-            <div class="date-header">月</div>
-            <div class="date-header">火</div>
-            <div class="date-header">水</div>
-            <div class="date-header">木</div>
-            <div class="date-header">金</div>
-            <div class="date-header">土</div>
-            <!-- 日付は JavaScript で生成 -->
+      <!-- 週表示ナビゲーション -->
+      <div class="week-navigation">
+        <button id="prevWeekBtn" class="week-nav-btn">‹ 前週</button>
+        <div id="currentWeekRange" class="week-range"></div>
+        <button id="nextWeekBtn" class="week-nav-btn">次週 ›</button>
+      </div>
+      
+      <!-- 週間スケジュール表示 -->
+      <div class="weekly-schedule">
+        <!-- 時間軸ヘッダー -->
+        <div class="time-header">
+          <div class="time-cell time-label">時間</div>
+          <div id="weekDaysHeader" class="week-days-header">
+            <!-- 曜日ヘッダーは JavaScript で生成 -->
           </div>
         </div>
         
-        <div class="time-picker" id="timePicker" style="display: none;">
-          <h3 style="margin-bottom: 10px;">時間を選択</h3>
-          <div id="timeGrid" class="time-grid"></div>
+        <!-- スケジュールグリッド -->
+        <div id="scheduleGrid" class="schedule-grid">
+          <!-- 時間スロットは JavaScript で生成 -->
+        </div>
+      </div>
+      
+      <!-- 選択された日時の表示 -->
+      <div id="selectedDateTime" class="selected-datetime" style="display: none;">
+        <div class="selected-info">
+          <span class="selected-label">選択した日時:</span>
+          <span id="selectedDateTimeText" class="selected-text"></span>
         </div>
       </div>
 
@@ -173,6 +178,8 @@
   <script src="/src/config/constants.js"></script>
   <script src="/src/config/firebase.js"></script>
   <script src="/src/scripts/utils.js"></script>
+  <script src="/src/scripts/weekly-schedule.js"></script>
+  <script src="/src/scripts/reminder-system.js"></script>
   <script src="/src/scripts/booking.js"></script>
   <script src="/src/scripts/calendar.js"></script>
   <script src="/src/scripts/reservation.js"></script>

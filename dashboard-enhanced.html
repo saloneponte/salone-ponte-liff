@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Salone Ponte 統合管理システム | ダッシュボード</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="/src/styles/tailwind-compiled.css" rel="stylesheet">
+  <link href="/src/styles/mobile-responsive.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    /* カスタムアニメーション */
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    
+    @keyframes slideInUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    
+    @keyframes shimmer {
+      0% { background-position: -468px 0; }
+      100% { background-position: 468px 0; }
+    }
+    
+    .animate-slide-in-right {
+      animation: slideInRight 0.3s ease-out;
+    }
+    
+    .animate-slide-in-up {
+      animation: slideInUp 0.3s ease-out;
+    }
+    
+    .animate-pulse-custom {
+      animation: pulse 2s infinite;
+    }
+    
+    .loading-shimmer {
+      background: linear-gradient(to right, #f6f7f8 8%, #edeef1 18%, #f6f7f8 33%);
+      background-size: 800px 104px;
+      animation: shimmer 1s infinite linear;
+    }
+    
+    /* グラデーション背景 */
+    .gradient-bg {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .gradient-card {
+      background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    }
+    
+    /* グラスモーフィズム効果 */
+    .glass-effect {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    /* ホバー効果 */
+    .hover-lift {
+      transition: all 0.3s ease;
+    }
+    
+    .hover-lift:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+    
+    /* ナビゲーション */
+    .nav-item {
+      transition: all 0.3s ease;
+      position: relative;
+    }
+    
+    .nav-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateX(4px);
+    }
+    
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: #60a5fa;
+      border-radius: 0 4px 4px 0;
+    }
+    
+    /* ステータスバッジ */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .status-online { @apply bg-green-100 text-green-800; }
+    .status-busy { @apply bg-yellow-100 text-yellow-800; }
+    .status-offline { @apply bg-gray-100 text-gray-800; }
+    
+    /* チャート容器 */
+    .chart-container {
+      position: relative;
+      height: 300px;
+      width: 100%;
+    }
+    
+    /* カスタムスクロールバー */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 3px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    
+    /* プログレスバー */
+    .progress-bar {
+      @apply w-full bg-gray-200 rounded-full h-2;
+    }
+    
+    .progress-fill {
+      @apply bg-blue-500 h-2 rounded-full transition-all duration-500 ease-out;
+    }
+    
+    /* 通知ドット */
+    .notification-dot {
+      @apply absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full;
+      animation: pulse 2s infinite;
+    }
+    
+    /* モバイル最適化 */
+    @media (max-width: 768px) {
+      .mobile-hide { display: none; }
+      .mobile-stack { flex-direction: column; gap: 0.5rem; }
+      .mobile-full { width: 100%; }
+    }
+    
+    /* Dark mode準備 */
+    @media (prefers-color-scheme: dark) {
+      .dark-mode-ready {
+        background-color: #1f2937;
+        color: #f9fafb;
+      }
+    }
+    
+    /* カスタムモーダル */
+    .modal-backdrop {
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(4px);
+    }
+    
+    .modal-content {
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    
+    /* 統計カード */
+    .stat-card {
+      @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover-lift;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
+    }
+    
+    /* アイコンコンテナ */
+    .icon-container {
+      @apply w-12 h-12 rounded-lg flex items-center justify-center text-lg;
+    }
+    
+    /* アクションボタン */
+    .action-btn {
+      @apply px-4 py-2 rounded-lg font-medium transition-all duration-200;
+    }
+    
+    .action-btn-primary {
+      @apply bg-blue-500 text-white hover:bg-blue-600 hover:shadow-lg;
+    }
+    
+    .action-btn-secondary {
+      @apply bg-gray-100 text-gray-700 hover:bg-gray-200;
+    }
+    
+    .action-btn-success {
+      @apply bg-green-500 text-white hover:bg-green-600;
+    }
+    
+    .action-btn-warning {
+      @apply bg-yellow-500 text-white hover:bg-yellow-600;
+    }
+    
+    .action-btn-danger {
+      @apply bg-red-500 text-white hover:bg-red-600;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <!-- サイドナビゲーション -->
+  <nav id="sideNav" class="fixed left-0 top-0 h-full w-64 gradient-bg text-white transform -translate-x-full transition-transform duration-300 z-40">
+    <div class="p-6">
+      <!-- ロゴエリア -->
+      <div class="flex items-center mb-8">
+        <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-3">
+          <span class="text-2xl">💇‍♀️</span>
+        </div>
+        <div>
+          <h2 class="text-xl font-bold">Salone Ponte</h2>
+          <p class="text-xs text-white text-opacity-70">管理システム</p>
+        </div>
+      </div>
+      
+      <!-- ナビゲーションメニュー -->
+      <ul class="space-y-2">
+        <li>
+          <button onclick="showDashboard()" class="nav-item active w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center">
+            <span class="material-icons mr-3 text-lg">dashboard</span>
+            <span>ダッシュボード</span>
+          </button>
+        </li>
+        <li>
+          <a href="customer-management.html" class="nav-item w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center block">
+            <span class="material-icons mr-3 text-lg">people</span>
+            <span>顧客管理</span>
+            <span class="ml-auto text-xs bg-blue-500 px-2 py-1 rounded-full" id="customerCount">0</span>
+          </a>
+        </li>
+        <li>
+          <a href="reservation-management.html" class="nav-item w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center block">
+            <span class="material-icons mr-3 text-lg">event</span>
+            <span>予約管理</span>
+            <span class="ml-auto text-xs bg-green-500 px-2 py-1 rounded-full" id="todayReservationCount">0</span>
+          </a>
+        </li>
+        <li>
+          <a href="calendar.html" class="nav-item w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center block">
+            <span class="material-icons mr-3 text-lg">calendar_today</span>
+            <span>カレンダー</span>
+            <span class="ml-auto text-xs bg-purple-500 px-2 py-1 rounded-full">New</span>
+          </a>
+        </li>
+        <li>
+          <a href="menu-management.html" class="nav-item w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center block">
+            <span class="material-icons mr-3 text-lg">list_alt</span>
+            <span>メニュー管理</span>
+          </a>
+        </li>
+        <li>
+          <a href="staff-management.html" class="nav-item w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center block">
+            <span class="material-icons mr-3 text-lg">badge</span>
+            <span>スタッフ管理</span>
+          </a>
+        </li>
+        <li>
+          <a href="message-broadcast.html" class="nav-item w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center block relative">
+            <span class="material-icons mr-3 text-lg">chat</span>
+            <span>メッセージ配信</span>
+            <div id="messageNotificationDot" class="notification-dot hidden"></div>
+          </a>
+        </li>
+        <li>
+          <button onclick="showAnalytics()" class="nav-item w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center">
+            <span class="material-icons mr-3 text-lg">analytics</span>
+            <span>分析・レポート</span>
+          </button>
+        </li>
+        <li>
+          <button onclick="showSettings()" class="nav-item w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center">
+            <span class="material-icons mr-3 text-lg">settings</span>
+            <span>設定</span>
+          </button>
+        </li>
+      </ul>
+      
+      <!-- ユーザー情報 -->
+      <div class="absolute bottom-6 left-6 right-6">
+        <div class="glass-effect rounded-lg p-4">
+          <div class="flex items-center">
+            <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center mr-3">
+              <span class="text-sm font-medium">管</span>
+            </div>
+            <div class="flex-1">
+              <p class="text-sm font-medium">管理者</p>
+              <div class="flex items-center">
+                <div class="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
+                <span class="text-xs text-white text-opacity-70">オンライン</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- メニューオーバーレイ（モバイル用） -->
+  <div id="menuOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden z-30" onclick="closeSideNav()"></div>
+
+  <!-- メインコンテンツ -->
+  <div id="mainContent" class="transition-all duration-300">
+    <!-- トップバー -->
+    <div class="bg-white shadow-sm border-b border-gray-200 px-6 py-4 sticky top-0 z-20">
+      <div class="flex justify-between items-center">
+        <div class="flex items-center">
+          <button id="menuToggle" class="lg:hidden mr-4 p-2 rounded-lg hover:bg-gray-100" onclick="toggleSideNav()">
+            <span class="material-icons">menu</span>
+          </button>
+          <div>
+            <h1 id="pageTitle" class="text-2xl font-bold text-gray-800">ダッシュボード</h1>
+            <p class="text-sm text-gray-600" id="pageSubtitle">サロンの運営状況を一目で確認</p>
+          </div>
+        </div>
+        
+        <!-- 右側のアクション -->
+        <div class="flex items-center space-x-4">
+          <!-- 通知ベル -->
+          <button class="relative p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
+            <span class="material-icons">notifications</span>
+            <div class="notification-dot"></div>
+          </button>
+          
+          <!-- クイックアクション -->
+          <div class="hidden md:flex space-x-2">
+            <button onclick="openBookingPage()" class="action-btn action-btn-primary flex items-center">
+              <span class="material-icons mr-2 text-sm">add</span>
+              新規予約
+            </button>
+            <button onclick="openCalendar()" class="action-btn action-btn-secondary flex items-center">
+              <span class="material-icons mr-2 text-sm">calendar_today</span>
+              カレンダー
+            </button>
+          </div>
+          
+          <!-- ユーザーメニュー -->
+          <div class="relative">
+            <button class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors">
+              <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                <span class="text-white text-sm font-medium">管</span>
+              </div>
+              <span class="hidden md:block text-sm font-medium text-gray-700">管理者</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- コンテンツエリア -->
+    <div class="p-6 space-y-6">
+      <!-- 統計サマリー -->
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <!-- 今日の予約数 -->
+        <div class="stat-card animate-slide-in-up">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-600">今日の予約</p>
+              <p class="text-3xl font-bold text-gray-900 mt-2" id="todayReservations">0</p>
+              <div class="flex items-center mt-2">
+                <span class="text-xs text-green-600 font-medium">+12%</span>
+                <span class="text-xs text-gray-500 ml-1">前日比</span>
+              </div>
+            </div>
+            <div class="icon-container bg-blue-100 text-blue-600">
+              <span class="material-icons">event</span>
+            </div>
+          </div>
+          <div class="mt-4">
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 75%"></div>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">予約枠使用率 75%</p>
+          </div>
+        </div>
+
+        <!-- 今日の売上 -->
+        <div class="stat-card animate-slide-in-up" style="animation-delay: 0.1s">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-600">今日の売上</p>
+              <p class="text-3xl font-bold text-gray-900 mt-2" id="todaySales">¥0</p>
+              <div class="flex items-center mt-2">
+                <span class="text-xs text-green-600 font-medium">+8%</span>
+                <span class="text-xs text-gray-500 ml-1">前日比</span>
+              </div>
+            </div>
+            <div class="icon-container bg-green-100 text-green-600">
+              <span class="material-icons">attach_money</span>
+            </div>
+          </div>
+          <div class="mt-4">
+            <div class="progress-bar">
+              <div class="progress-fill bg-green-500" style="width: 60%"></div>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">目標達成率 60%</p>
+          </div>
+        </div>
+
+        <!-- 新規顧客 -->
+        <div class="stat-card animate-slide-in-up" style="animation-delay: 0.2s">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-600">新規顧客（今月）</p>
+              <p class="text-3xl font-bold text-gray-900 mt-2" id="newCustomers">0</p>
+              <div class="flex items-center mt-2">
+                <span class="text-xs text-green-600 font-medium">+24%</span>
+                <span class="text-xs text-gray-500 ml-1">前月比</span>
+              </div>
+            </div>
+            <div class="icon-container bg-purple-100 text-purple-600">
+              <span class="material-icons">person_add</span>
+            </div>
+          </div>
+          <div class="mt-4">
+            <div class="progress-bar">
+              <div class="progress-fill bg-purple-500" style="width: 45%"></div>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">月間目標 45%</p>
+          </div>
+        </div>
+
+        <!-- 顧客満足度 -->
+        <div class="stat-card animate-slide-in-up" style="animation-delay: 0.3s">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-600">顧客満足度</p>
+              <p class="text-3xl font-bold text-gray-900 mt-2">4.8<span class="text-lg">/5.0</span></p>
+              <div class="flex items-center mt-2">
+                <span class="text-xs text-green-600 font-medium">+0.2</span>
+                <span class="text-xs text-gray-500 ml-1">前月比</span>
+              </div>
+            </div>
+            <div class="icon-container bg-yellow-100 text-yellow-600">
+              <span class="material-icons">star</span>
+            </div>
+          </div>
+          <div class="mt-4">
+            <div class="flex text-yellow-400">
+              <span class="material-icons text-sm">star</span>
+              <span class="material-icons text-sm">star</span>
+              <span class="material-icons text-sm">star</span>
+              <span class="material-icons text-sm">star</span>
+              <span class="material-icons text-sm text-gray-300">star</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- チャートセクション -->
+      <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <!-- 売上トレンド -->
+        <div class="xl:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover-lift">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">売上トレンド</h3>
+              <p class="text-sm text-gray-600">過去7日間の売上推移</p>
+            </div>
+            <div class="flex space-x-2">
+              <button class="text-xs px-3 py-1 bg-blue-100 text-blue-600 rounded-full">7日</button>
+              <button class="text-xs px-3 py-1 text-gray-600 hover:bg-gray-100 rounded-full">30日</button>
+              <button class="text-xs px-3 py-1 text-gray-600 hover:bg-gray-100 rounded-full">90日</button>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="salesChart"></canvas>
+          </div>
+        </div>
+
+        <!-- 予約状況 -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover-lift">
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold text-gray-900">予約状況</h3>
+            <p class="text-sm text-gray-600">ステータス別予約数</p>
+          </div>
+          <div class="chart-container">
+            <canvas id="reservationChart"></canvas>
+          </div>
+          <div class="mt-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center">
+                <div class="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                <span class="text-sm text-gray-600">確定</span>
+              </div>
+              <span class="text-sm font-medium" id="confirmedCount">0</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center">
+                <div class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
+                <span class="text-sm text-gray-600">保留</span>
+              </div>
+              <span class="text-sm font-medium" id="pendingCount">0</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center">
+                <div class="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+                <span class="text-sm text-gray-600">完了</span>
+              </div>
+              <span class="text-sm font-medium" id="completedCount">0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 今日のスケジュールと最近の活動 -->
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <!-- 今日のスケジュール -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover-lift">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">今日のスケジュール</h3>
+              <p class="text-sm text-gray-600" id="todayDate">2025年1月6日（月）</p>
+            </div>
+            <button onclick="openCalendar()" class="action-btn action-btn-secondary">
+              <span class="material-icons mr-1 text-sm">calendar_today</span>
+              カレンダー
+            </button>
+          </div>
+          <div id="todaySchedule" class="space-y-3 custom-scrollbar max-h-80 overflow-y-auto">
+            <!-- 動的に生成される予約リスト -->
+          </div>
+        </div>
+
+        <!-- 最近の活動 -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover-lift">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">最近の活動</h3>
+              <p class="text-sm text-gray-600">リアルタイム更新</p>
+            </div>
+            <div class="flex items-center">
+              <div class="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
+              <span class="text-xs text-gray-500">Live</span>
+            </div>
+          </div>
+          <div id="recentActivity" class="space-y-3 custom-scrollbar max-h-80 overflow-y-auto">
+            <!-- 動的に生成される活動リスト -->
+          </div>
+        </div>
+      </div>
+
+      <!-- スタッフステータスと人気メニュー -->
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <!-- スタッフステータス -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover-lift">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">スタッフステータス</h3>
+              <p class="text-sm text-gray-600">現在の稼働状況</p>
+            </div>
+            <button onclick="window.location.href='staff-management.html'" class="action-btn action-btn-secondary">
+              <span class="material-icons mr-1 text-sm">settings</span>
+              管理
+            </button>
+          </div>
+          <div id="staffStatus" class="space-y-4">
+            <!-- 動的に生成されるスタッフステータス -->
+          </div>
+        </div>
+
+        <!-- 人気メニューランキング -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover-lift">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">人気メニュー</h3>
+              <p class="text-sm text-gray-600">今月の予約数順</p>
+            </div>
+            <button onclick="window.location.href='menu-management.html'" class="action-btn action-btn-secondary">
+              <span class="material-icons mr-1 text-sm">edit</span>
+              編集
+            </button>
+          </div>
+          <div id="popularMenus" class="space-y-3">
+            <!-- 動的に生成される人気メニューリスト -->
+          </div>
+        </div>
+      </div>
+
+      <!-- クイックアクション -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover-lift">
+        <h3 class="text-lg font-semibold text-gray-900 mb-6">クイックアクション</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <button onclick="openBookingPage()" class="action-btn action-btn-primary flex items-center justify-center p-4">
+            <span class="material-icons mr-2">add</span>
+            新規予約作成
+          </button>
+          <button onclick="window.location.href='customer-management.html'" class="action-btn action-btn-secondary flex items-center justify-center p-4">
+            <span class="material-icons mr-2">person_add</span>
+            顧客登録
+          </button>
+          <button onclick="window.location.href='message-broadcast.html'" class="action-btn action-btn-warning flex items-center justify-center p-4">
+            <span class="material-icons mr-2">send</span>
+            メッセージ送信
+          </button>
+          <button onclick="exportData()" class="action-btn action-btn-secondary flex items-center justify-center p-4">
+            <span class="material-icons mr-2">download</span>
+            データエクスポート
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ローディングオーバーレイ -->
+  <div id="loadingOverlay" class="fixed inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50 hidden">
+    <div class="text-center">
+      <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <p class="text-gray-600">データを読み込み中...</p>
+    </div>
+  </div>
+
+  <!-- 成功/エラー通知 -->
+  <div id="notificationContainer" class="fixed top-4 right-4 z-50 space-y-2">
+    <!-- 動的に通知が追加される -->
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  
+  <!-- 設定ファイル読み込み -->
+  <script src="/src/config/env.js"></script>
+  <script src="/src/config/constants.js"></script>
+  <script src="/src/config/firebase.js"></script>
+
+  <!-- JavaScript読み込み -->
+  <script src="/src/scripts/ui-components.js"></script>
+  <script src="/src/scripts/accessibility-enhancements.js"></script>
+  <script src="/src/scripts/dashboard-enhanced.js"></script>
+</body>
+</html>

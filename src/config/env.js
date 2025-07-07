@@ -75,6 +75,10 @@ class EnvironmentConfig {
           FIREBASE_MESSAGING_SENDER_ID: process.env.FIREBASE_MESSAGING_SENDER_ID,
           FIREBASE_APP_ID: process.env.FIREBASE_APP_ID,
           FIREBASE_MEASUREMENT_ID: process.env.FIREBASE_MEASUREMENT_ID,
+          GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+          GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+          GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
+          GOOGLE_CALENDAR_ID: process.env.GOOGLE_CALENDAR_ID,
           NODE_ENV: process.env.NODE_ENV,
           APP_URL: process.env.APP_URL,
           SECURE_MODE: process.env.SECURE_MODE,
@@ -111,6 +115,10 @@ class EnvironmentConfig {
       FIREBASE_MESSAGING_SENDER_ID: '463711728652',
       FIREBASE_APP_ID: '1:463711728652:web:59c749e11d201b26b86a29',
       FIREBASE_MEASUREMENT_ID: 'G-MPWGTB6R7C',
+      GOOGLE_CLIENT_ID: 'your_google_client_id_here', // 開発用ダミー
+      GOOGLE_CLIENT_SECRET: 'your_google_client_secret_here',
+      GOOGLE_API_KEY: 'your_google_api_key_here',
+      GOOGLE_CALENDAR_ID: 'primary',
       NODE_ENV: 'development',
       APP_URL: 'http://localhost:3000',
       SECURE_MODE: 'false',
@@ -241,6 +249,19 @@ class EnvironmentConfig {
   }
 
   /**
+   * Google Calendar API設定を取得
+   * @returns {object} Google Calendar API設定
+   */
+  getGoogleCalendarConfig() {
+    return {
+      clientId: this.get('GOOGLE_CLIENT_ID'),
+      clientSecret: this.get('GOOGLE_CLIENT_SECRET'),
+      apiKey: this.get('GOOGLE_API_KEY'),
+      calendarId: this.get('GOOGLE_CALENDAR_ID', 'primary')
+    };
+  }
+
+  /**
    * 現在の設定状態を取得（機密情報を除く）
    * @returns {object} 設定状態
    */
@@ -252,6 +273,7 @@ class EnvironmentConfig {
       hasLIFF: !!this.config.LIFF_ID,
       hasFirebase: !!this.config.FIREBASE_API_KEY,
       hasLineAPI: !!(this.config.LINE_CHANNEL_SECRET && this.config.LINE_CHANNEL_ACCESS_TOKEN),
+      hasGoogleCalendar: !!(this.config.GOOGLE_CLIENT_ID && this.config.GOOGLE_API_KEY),
       secureMode: this.config.SECURE_MODE === 'true',
       logLevel: this.config.LOG_LEVEL || 'info'
     };

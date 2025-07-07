@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>メッセージ配信 - Salone Ponte</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="/src/styles/tailwind-compiled.css" rel="stylesheet">
+  <style>
+    /* LINEトーク風スタイル */
+    .chat-container {
+      background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+      min-height: 70vh;
+    }
+    
+    .message-bubble {
+      max-width: 70%;
+      word-wrap: break-word;
+      border-radius: 18px;
+      padding: 12px 16px;
+      margin: 4px 0;
+      position: relative;
+    }
+    
+    .message-sent {
+      background: #007bff;
+      color: white;
+      margin-left: auto;
+      border-bottom-right-radius: 6px;
+    }
+    
+    .message-received {
+      background: white;
+      color: #333;
+      margin-right: auto;
+      border-bottom-left-radius: 6px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    
+    .customer-list-item {
+      transition: all 0.2s ease;
+    }
+    
+    .customer-list-item:hover {
+      background: #f8f9fa;
+    }
+    
+    .customer-list-item.active {
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+    }
+    
+    .unread-badge {
+      background: #ff4444;
+      color: white;
+      border-radius: 10px;
+      font-size: 12px;
+      min-width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .online-indicator {
+      width: 8px;
+      height: 8px;
+      background: #4caf50;
+      border-radius: 50%;
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      border: 2px solid white;
+    }
+    
+    .message-input {
+      border-radius: 25px;
+      border: 1px solid #ddd;
+      padding: 12px 20px;
+      resize: none;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    
+    .message-input:focus {
+      border-color: #007bff;
+    }
+    
+    .send-button {
+      background: #007bff;
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s;
+    }
+    
+    .send-button:hover {
+      background: #0056b3;
+    }
+    
+    .send-button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .template-bubble {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      border-radius: 8px;
+      padding: 12px;
+      margin: 8px 0;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .template-bubble:hover {
+      background: #ffeb3b;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .flex-message-preview {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin: 8px 0;
+    }
+    
+    .customer-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      position: relative;
+    }
+    
+    .last-message {
+      color: #666;
+      font-size: 14px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .message-timestamp {
+      font-size: 12px;
+      color: #999;
+      margin-top: 4px;
+    }
+    
+    .search-input {
+      border-radius: 20px;
+      border: 1px solid #ddd;
+      padding: 8px 16px;
+      width: 100%;
+    }
+    
+    .modal {
+      @apply fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50;
+    }
+    
+    .modal.active {
+      @apply flex;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="container mx-auto px-4 py-6 max-w-7xl">
+    <!-- ヘッダー -->
+    <div class="flex justify-between items-center mb-6">
+      <div>
+        <div class="flex items-center gap-4 mb-2">
+          <button onclick="history.back()" class="text-gray-500 hover:text-gray-700">
+            ← ダッシュボードに戻る
+          </button>
+        </div>
+        <h1 class="text-3xl font-bold text-gray-800">💬 メッセージ配信</h1>
+        <p class="text-gray-600">LINEトーク風インターフェース</p>
+      </div>
+      <div class="flex space-x-3">
+        <button id="templateBtn" class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors">
+          📝 テンプレート
+        </button>
+        <button id="broadcastBtn" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors">
+          📢 一斉配信
+        </button>
+      </div>
+    </div>
+
+    <!-- メインコンテンツ -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-180px)]">
+      <!-- 顧客リスト -->
+      <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="p-4 border-b bg-gray-50">
+          <h3 class="font-semibold text-gray-800 mb-3">顧客一覧</h3>
+          <input type="text" id="customerSearch" placeholder="顧客を検索..." 
+                 class="search-input">
+        </div>
+        <div id="customerList" class="overflow-y-auto h-full">
+          <!-- 顧客リストは JavaScript で動的生成 -->
+        </div>
+      </div>
+
+      <!-- チャットエリア -->
+      <div class="lg:col-span-2 bg-white rounded-lg shadow-md flex flex-col">
+        <!-- チャットヘッダー -->
+        <div id="chatHeader" class="p-4 border-b bg-gray-50 hidden">
+          <div class="flex items-center">
+            <div class="customer-avatar mr-3">
+              <span id="selectedCustomerInitial">?</span>
+            </div>
+            <div>
+              <h4 id="selectedCustomerName" class="font-semibold">顧客を選択してください</h4>
+              <p id="selectedCustomerStatus" class="text-sm text-gray-500">オンライン</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- メッセージエリア -->
+        <div id="chatArea" class="flex-1 chat-container p-4 overflow-y-auto">
+          <div class="text-center text-gray-500 py-8">
+            <div class="text-6xl mb-4">💬</div>
+            <p>左側から顧客を選択してメッセージを開始してください</p>
+          </div>
+        </div>
+
+        <!-- メッセージ入力エリア -->
+        <div id="messageInputArea" class="p-4 border-t bg-gray-50 hidden">
+          <div class="flex items-end space-x-3">
+            <button id="attachBtn" class="text-gray-500 hover:text-gray-700 p-2">
+              📎
+            </button>
+            <textarea id="messageInput" placeholder="メッセージを入力..." 
+                      class="flex-1 message-input" rows="1"></textarea>
+            <button id="sendBtn" class="send-button text-white" disabled>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+              </svg>
+            </button>
+          </div>
+          
+          <!-- クイック返信ボタン -->
+          <div class="flex space-x-2 mt-3">
+            <button class="quick-reply bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-sm hover:bg-blue-200">
+              ありがとうございます
+            </button>
+            <button class="quick-reply bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-sm hover:bg-blue-200">
+              承知いたしました
+            </button>
+            <button class="quick-reply bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-sm hover:bg-blue-200">
+              お疲れ様でした
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- テンプレートモーダル -->
+  <div id="templateModal" class="modal">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+      <h3 class="text-lg font-semibold mb-4">メッセージテンプレート</h3>
+      
+      <div class="max-h-96 overflow-y-auto">
+        <!-- テキストテンプレート -->
+        <div class="mb-4">
+          <h4 class="font-medium text-gray-700 mb-2">📝 テキストメッセージ</h4>
+          <div class="space-y-2">
+            <div class="template-bubble" data-template="greeting" data-type="text">
+              <h5 class="font-medium">挨拶メッセージ</h5>
+              <p class="text-sm text-gray-600">いつもサロンポンテをご利用いただき、ありがとうございます。</p>
+            </div>
+            
+            <div class="template-bubble" data-template="simple-appointment" data-type="text">
+              <h5 class="font-medium">予約確認（シンプル）</h5>
+              <p class="text-sm text-gray-600">明日のご予約の確認です。お時間に変更はございませんか？</p>
+            </div>
+            
+            <div class="template-bubble" data-template="thankyou-simple" data-type="text">
+              <h5 class="font-medium">お礼メッセージ（シンプル）</h5>
+              <p class="text-sm text-gray-600">本日はご来店いただき、ありがとうございました。</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Flex Messageテンプレート -->
+        <div class="mb-4">
+          <h4 class="font-medium text-gray-700 mb-2">🎨 リッチメッセージ (Flex Message)</h4>
+          <div class="space-y-2">
+            <div class="template-bubble" data-template="appointment" data-type="flex">
+              <h5 class="font-medium">予約確認カード</h5>
+              <p class="text-sm text-gray-600">予約情報を見やすくカード形式で表示</p>
+            </div>
+            
+            <div class="template-bubble" data-template="promotion" data-type="flex">
+              <h5 class="font-medium">キャンペーン告知</h5>
+              <p class="text-sm text-gray-600">画像付きのキャンペーン案内カード</p>
+            </div>
+            
+            <div class="template-bubble" data-template="menu" data-type="flex">
+              <h5 class="font-medium">メニュー紹介</h5>
+              <p class="text-sm text-gray-600">カルーセル形式のメニュー紹介</p>
+            </div>
+            
+            <div class="template-bubble" data-template="staff" data-type="flex">
+              <h5 class="font-medium">スタッフ紹介</h5>
+              <p class="text-sm text-gray-600">写真付きのスタッフプロフィール</p>
+            </div>
+            
+            <div class="template-bubble" data-template="thankyou" data-type="flex">
+              <h5 class="font-medium">お礼メッセージカード</h5>
+              <p class="text-sm text-gray-600">来店御礼と次回予約ボタン付き</p>
+            </div>
+            
+            <div class="template-bubble" data-template="reminder" data-type="flex">
+              <h5 class="font-medium">予約リマインダー</h5>
+              <p class="text-sm text-gray-600">予約前日のリマインド通知</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="flex justify-end space-x-3 mt-6">
+        <button onclick="closeTemplateModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">
+          キャンセル
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 一斉配信モーダル -->
+  <div id="broadcastModal" class="modal">
+    <div class="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
+      <h3 class="text-lg font-semibold mb-4">一斉配信</h3>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-2">配信対象</label>
+        <select id="broadcastTarget" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+          <option value="all">全顧客</option>
+          <option value="vip">VIP顧客</option>
+          <option value="regular">常連顧客</option>
+          <option value="new">新規顧客</option>
+        </select>
+      </div>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-2">メッセージ</label>
+        <textarea id="broadcastMessage" rows="4" 
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="一斉配信するメッセージを入力してください..."></textarea>
+      </div>
+      
+      <div class="flex justify-end space-x-3">
+        <button onclick="closeBroadcastModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">
+          キャンセル
+        </button>
+        <button onclick="sendBroadcast()" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
+          配信する
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  
+  <!-- 設定ファイル読み込み -->
+  <script src="/src/config/env.js"></script>
+  <script src="/src/config/constants.js"></script>
+  <script src="/src/config/firebase.js"></script>
+  
+  <!-- JavaScript読み込み -->
+  <script src="/src/scripts/flex-templates.js"></script>
+  <script src="/src/scripts/message-broadcast.js"></script>
+</body>
+</html>

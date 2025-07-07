@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>予約カレンダー - Salone Ponte</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="/src/styles/tailwind-compiled.css" rel="stylesheet">
+  <style>
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 1px;
+      background-color: #e5e7eb;
+      border: 1px solid #e5e7eb;
+    }
+    
+    .calendar-cell {
+      background-color: white;
+      min-height: 120px;
+      padding: 8px;
+      position: relative;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .calendar-cell:hover {
+      background-color: #f8fafc;
+    }
+    
+    .calendar-cell.other-month {
+      background-color: #f9fafb;
+      color: #9ca3af;
+    }
+    
+    .calendar-cell.today {
+      background-color: #dbeafe;
+    }
+    
+    .calendar-cell.selected {
+      background-color: #3b82f6;
+      color: white;
+    }
+    
+    .appointment {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      font-size: 10px;
+      padding: 2px 4px;
+      border-radius: 4px;
+      margin: 1px 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    
+    .appointment:hover {
+      background: linear-gradient(135deg, #059669, #047857);
+    }
+    
+    .appointment.blocked {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+    }
+    
+    .appointment.pending {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+    
+    .time-slot {
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      padding: 8px;
+      margin: 2px 0;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .time-slot:hover {
+      background: #e5e7eb;
+    }
+    
+    .time-slot.available {
+      background: #ecfdf5;
+      border-color: #10b981;
+      color: #065f46;
+    }
+    
+    .time-slot.booked {
+      background: #fef2f2;
+      border-color: #ef4444;
+      color: #991b1b;
+      cursor: not-allowed;
+    }
+    
+    .time-slot.selected {
+      background: #dbeafe;
+      border-color: #3b82f6;
+      color: #1e40af;
+    }
+    
+    .google-sync-status {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .google-sync-status.connected {
+      background: #dcfce7;
+      color: #166534;
+    }
+    
+    .google-sync-status.disconnected {
+      background: #fef2f2;
+      color: #991b1b;
+    }
+    
+    .modal {
+      @apply fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50;
+    }
+    
+    .modal.active {
+      @apply flex;
+    }
+    
+    .calendar-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 1rem;
+      border-radius: 0.5rem 0.5rem 0 0;
+    }
+    
+    .loading-spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #3498db;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="container mx-auto px-4 py-6 max-w-7xl">
+    <!-- ヘッダー -->
+    <div class="flex justify-between items-center mb-6">
+      <div>
+        <div class="flex items-center gap-4 mb-2">
+          <button onclick="history.back()" class="text-gray-500 hover:text-gray-700">
+            ← ダッシュボードに戻る
+          </button>
+        </div>
+        <h1 class="text-3xl font-bold text-gray-800">📅 予約カレンダー</h1>
+        <p class="text-gray-600">Googleカレンダー連携対応</p>
+      </div>
+      <div class="flex items-center space-x-3">
+        <div id="googleSyncStatus" class="google-sync-status disconnected">
+          <span id="syncStatusText">Google未連携</span>
+          <div id="syncSpinner" class="loading-spinner ml-2 hidden"></div>
+        </div>
+        <button id="googleAuthBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+          📊 Google連携
+        </button>
+        <button id="syncCalendarBtn" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50" disabled>
+          🔄 同期
+        </button>
+        <button id="addAppointmentBtn" class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors">
+          ➕ 予約追加
+        </button>
+      </div>
+    </div>
+
+    <!-- カレンダーコントロール -->
+    <div class="bg-white rounded-lg shadow-md mb-6">
+      <div class="calendar-header">
+        <div class="flex justify-between items-center">
+          <button id="prevMonth" class="text-white hover:text-gray-200 text-2xl">‹</button>
+          <h2 id="currentMonth" class="text-xl font-semibold">2025年1月</h2>
+          <button id="nextMonth" class="text-white hover:text-gray-200 text-2xl">›</button>
+        </div>
+      </div>
+      
+      <!-- 曜日ヘッダー -->
+      <div class="grid grid-cols-7 bg-gray-50">
+        <div class="p-3 text-center font-semibold text-gray-700 border-r border-gray-200">日</div>
+        <div class="p-3 text-center font-semibold text-gray-700 border-r border-gray-200">月</div>
+        <div class="p-3 text-center font-semibold text-gray-700 border-r border-gray-200">火</div>
+        <div class="p-3 text-center font-semibold text-gray-700 border-r border-gray-200">水</div>
+        <div class="p-3 text-center font-semibold text-gray-700 border-r border-gray-200">木</div>
+        <div class="p-3 text-center font-semibold text-gray-700 border-r border-gray-200">金</div>
+        <div class="p-3 text-center font-semibold text-gray-700">土</div>
+      </div>
+      
+      <!-- カレンダーグリッド -->
+      <div id="calendarGrid" class="calendar-grid">
+        <!-- JavaScript で動的生成 -->
+      </div>
+    </div>
+
+    <!-- 詳細パネル -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- 選択日の詳細 -->
+      <div class="lg:col-span-2 bg-white rounded-lg shadow-md p-6">
+        <div id="selectedDateInfo" class="mb-4">
+          <h3 class="text-lg font-semibold text-gray-800">日付を選択してください</h3>
+          <p class="text-gray-600">カレンダーから日付をクリックして予約状況を確認</p>
+        </div>
+        
+        <div id="timeSlots" class="hidden">
+          <h4 class="font-semibold mb-3">予約可能時間</h4>
+          <div id="timeSlotsGrid" class="grid grid-cols-2 md:grid-cols-3 gap-2">
+            <!-- JavaScript で動的生成 -->
+          </div>
+        </div>
+        
+        <div id="dayAppointments" class="hidden">
+          <h4 class="font-semibold mb-3">本日の予約</h4>
+          <div id="appointmentsList" class="space-y-2">
+            <!-- JavaScript で動的生成 -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 統計情報 -->
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <h3 class="text-lg font-semibold mb-4">📊 統計情報</h3>
+        
+        <div class="space-y-4">
+          <div class="border-b pb-3">
+            <div class="flex justify-between">
+              <span class="text-gray-600">今月の予約数</span>
+              <span id="monthlyCount" class="font-semibold">0</span>
+            </div>
+          </div>
+          
+          <div class="border-b pb-3">
+            <div class="flex justify-between">
+              <span class="text-gray-600">今日の予約数</span>
+              <span id="todayCount" class="font-semibold">0</span>
+            </div>
+          </div>
+          
+          <div class="border-b pb-3">
+            <div class="flex justify-between">
+              <span class="text-gray-600">空き時間</span>
+              <span id="availableSlots" class="font-semibold text-green-600">0</span>
+            </div>
+          </div>
+          
+          <div>
+            <div class="flex justify-between">
+              <span class="text-gray-600">Google同期</span>
+              <span id="lastSyncTime" class="text-sm text-gray-500">未同期</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- クイックアクション -->
+        <div class="mt-6 space-y-2">
+          <button id="exportCalendarBtn" class="w-full bg-gray-100 text-gray-700 py-2 px-4 rounded hover:bg-gray-200 transition-colors">
+            📤 カレンダー出力
+          </button>
+          <button id="importCalendarBtn" class="w-full bg-blue-100 text-blue-700 py-2 px-4 rounded hover:bg-blue-200 transition-colors">
+            📥 Googleカレンダー取込
+          </button>
+          <button id="bidirectionalSyncBtn" class="w-full bg-green-100 text-green-700 py-2 px-4 rounded hover:bg-green-200 transition-colors">
+            🔄 双方向同期
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 予約詳細モーダル -->
+  <div id="appointmentModal" class="modal">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+      <h3 class="text-lg font-semibold mb-4">予約詳細</h3>
+      
+      <div id="appointmentDetails" class="space-y-3">
+        <!-- JavaScript で動的生成 -->
+      </div>
+      
+      <div class="flex justify-end space-x-3 mt-6">
+        <button onclick="closeAppointmentModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">
+          閉じる
+        </button>
+        <button id="editAppointmentBtn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+          編集
+        </button>
+        <button id="cancelAppointmentBtn" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">
+          キャンセル
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Google認証モーダル -->
+  <div id="googleAuthModal" class="modal">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+      <h3 class="text-lg font-semibold mb-4">Google カレンダー連携</h3>
+      
+      <div class="mb-4">
+        <p class="text-gray-600 mb-3">
+          Googleカレンダーと連携することで、予約の同期や二重ブッキングの防止が可能になります。
+        </p>
+        
+        <div class="bg-blue-50 p-3 rounded-lg">
+          <h4 class="font-medium text-blue-800 mb-2">連携機能</h4>
+          <ul class="text-sm text-blue-700 space-y-1">
+            <li>• 予約の自動同期</li>
+            <li>• 二重ブッキング防止</li>
+            <li>• スケジュール一元管理</li>
+            <li>• リマインダー通知</li>
+          </ul>
+        </div>
+      </div>
+      
+      <div class="flex justify-end space-x-3">
+        <button onclick="closeGoogleAuthModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">
+          キャンセル
+        </button>
+        <button id="authenticateGoogleBtn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+          認証開始
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Google APIs -->
+  <script src="https://apis.google.com/js/api.js"></script>
+  <script src="https://accounts.google.com/gsi/client"></script>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  
+  <!-- 設定ファイル読み込み -->
+  <script src="/src/config/env.js"></script>
+  <script src="/src/config/constants.js"></script>
+  <script src="/src/config/firebase.js"></script>
+
+  <!-- JavaScript読み込み -->
+  <script src="/src/scripts/google-calendar.js"></script>
+  <script src="/src/scripts/calendar.js"></script>
+  <script src="/src/scripts/calendar-display.js"></script>
+</body>
+</html>

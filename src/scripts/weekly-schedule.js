@@ -1,0 +1,58 @@
+// 週間スケジュール表示機能 - Salone Ponte
+// 今日起点の1週間表示で時間ごとの○×表示
+
+class WeeklySchedule {
+  constructor() {
+    // 営業時間設定
+    this.businessHours = {
+      start: 9, // 9時開始
+      end: 21,  // 21時終了
+      interval: 60 // 60分間隔
+    };
+    
+    // 現在の週の開始日
+    this.currentWeekStart = this.getWeekStart(new Date());
+    
+    // 選択された日時
+    this.selectedDateTime = null;
+    
+    // 既存の予約データ（模擬データ）
+    this.existingBookings = [];
+    
+    // スタッフの勤務スケジュール（模擬データ）
+    this.staffSchedule = {};
+    
+    this.init();
+  }
+  
+  init() {
+    this.setupEventListeners();
+    this.renderWeeklySchedule();
+    this.loadBookingData();
+  }
+  
+  // ===== イベントリスナー設定 =====
+  
+  setupEventListeners() {
+    // 週間ナビゲーション
+    document.getElementById('prevWeekBtn')?.addEventListener('click', () => {
+      this.navigateWeek(-1);
+    });
+    
+    document.getElementById('nextWeekBtn')?.addEventListener('click', () => {
+      this.navigateWeek(1);
+    });
+  }
+  
+  // ===== 日付計算ユーティリティ =====
+  
+  getWeekStart(date) {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day; // 日曜日を週の開始とする
+    return new Date(d.setDate(diff));
+  }
+  
+  formatDate(date, format = 'YYYY-MM-DD') {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');\n    const day = String(date.getDate()).padStart(2, '0');\n    const weekday = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];\n    \n    switch (format) {\n      case 'YYYY-MM-DD':\n        return `${year}-${month}-${day}`;\n      case 'MM/DD':\n        return `${month}/${day}`;\n      case 'M/D':\n        return `${parseInt(month)}/${parseInt(day)}`;\n      case 'weekday':\n        return weekday;\n      case 'full':\n        return `${year}年${parseInt(month)}月${parseInt(day)}日(${weekday})`;\n      default:\n        return date.toLocaleDateString('ja-JP');\n    }\n  }\n  \n  // ===== 週間ナビゲーション =====\n  \n  navigateWeek(direction) {\n    const newDate = new Date(this.currentWeekStart);\n    newDate.setDate(newDate.getDate() + (direction * 7));\n    \n    // 過去の週への移動を制限（今日より前の週は選択不可）\n    const today = new Date();\n    const todayWeekStart = this.getWeekStart(today);\n    \n    if (newDate < todayWeekStart) {\n      return; // 過去の週には移動しない\n    }\n    \n    this.currentWeekStart = newDate;\n    this.selectedDateTime = null; // 選択をリセット\n    this.renderWeeklySchedule();\n    this.updateNextButton();\n  }\n  \n  // ===== レンダリング関数 =====\n  \n  renderWeeklySchedule() {\n    this.renderWeekNavigation();\n    this.renderWeekDaysHeader();\n    this.renderTimeSlots();\n  }\n  \n  renderWeekNavigation() {\n    const weekRangeElement = document.getElementById('currentWeekRange');\n    if (!weekRangeElement) return;\n    \n    const weekEnd = new Date(this.currentWeekStart);\n    weekEnd.setDate(weekEnd.getDate() + 6);\n    \n    const startStr = this.formatDate(this.currentWeekStart, 'M/D');\n    const endStr = this.formatDate(weekEnd, 'M/D');\n    \n    weekRangeElement.textContent = `${startStr} - ${endStr}`;\n    \n    // 前週ボタンの制御\n    const prevBtn = document.getElementById('prevWeekBtn');\n    const today = new Date();\n    const todayWeekStart = this.getWeekStart(today);\n    \n    if (prevBtn) {\n      prevBtn.disabled = this.currentWeekStart <= todayWeekStart;\n    }\n  }\n  \n  renderWeekDaysHeader() {\n    const headerElement = document.getElementById('weekDaysHeader');\n    if (!headerElement) return;\n    \n    const today = new Date();\n    const todayStr = this.formatDate(today, 'YYYY-MM-DD');\n    \n    let headerHTML = '';\n    \n    for (let i = 0; i < 7; i++) {\n      const date = new Date(this.currentWeekStart);\n      date.setDate(date.getDate() + i);\n      \n      const dateStr = this.formatDate(date, 'YYYY-MM-DD');\n      const isToday = dateStr === todayStr;\n      const dayClass = isToday ? 'day-header today' : 'day-header';\n      \n      headerHTML += `\n        <div class=\"${dayClass}\" data-date=\"${dateStr}\">\n          <span class=\"day-name\">${this.formatDate(date, 'weekday')}</span>\n          <span class=\"day-date\">${this.formatDate(date, 'M/D')}</span>\n        </div>\n      `;\n    }\n    \n    headerElement.innerHTML = headerHTML;\n  }\n  \n  renderTimeSlots() {\n    const gridElement = document.getElementById('scheduleGrid');\n    if (!gridElement) return;\n    \n    const today = new Date();\n    const currentHour = today.getHours();\n    const todayStr = this.formatDate(today, 'YYYY-MM-DD');\n    \n    let gridHTML = '';\n    \n    // 時間スロットを生成（9:00 - 21:00）\n    for (let hour = this.businessHours.start; hour < this.businessHours.end; hour++) {\n      const timeStr = `${hour.toString().padStart(2, '0')}:00`;\n      \n      gridHTML += `\n        <div class=\"time-row\">\n          <div class=\"time-slot\">${timeStr}</div>\n          <div class=\"day-slots\">\n      `;\n      \n      // 各曜日のスロットを生成\n      for (let i = 0; i < 7; i++) {\n        const date = new Date(this.currentWeekStart);\n        date.setDate(date.getDate() + i);\n        date.setHours(hour, 0, 0, 0);\n        \n        const dateStr = this.formatDate(date, 'YYYY-MM-DD');\n        const slotKey = `${dateStr}_${hour}`;\n        const slotStatus = this.getSlotStatus(date, hour, dateStr, todayStr, currentHour);\n        \n        gridHTML += `\n          <div class=\"slot ${slotStatus.class}\" \n               data-datetime=\"${date.toISOString()}\"\n               data-date=\"${dateStr}\"\n               data-hour=\"${hour}\"\n               onclick=\"weeklySchedule.selectTimeSlot(this)\"\n               ${slotStatus.clickable ? '' : 'style=\"pointer-events: none;\"'}>\n          </div>\n        `;\n      }\n      \n      gridHTML += `\n          </div>\n        </div>\n      `;\n    }\n    \n    gridElement.innerHTML = gridHTML;\n  }\n  \n  // ===== スロット状態判定 =====\n  \n  getSlotStatus(date, hour, dateStr, todayStr, currentHour) {\n    // 過去の時間は選択不可\n    if (dateStr === todayStr && hour <= currentHour) {\n      return { class: 'past', clickable: false };\n    }\n    \n    // 過去の日付は選択不可\n    if (dateStr < todayStr) {\n      return { class: 'past', clickable: false };\n    }\n    \n    // 既存の予約があるかチェック\n    const bookingKey = `${dateStr}_${hour}`;\n    if (this.existingBookings.includes(bookingKey)) {\n      return { class: 'booked', clickable: false };\n    }\n    \n    // スタッフが勤務していないかチェック\n    if (this.isStaffUnavailable(dateStr, hour)) {\n      return { class: 'unavailable', clickable: false };\n    }\n    \n    // 営業時間外\n    if (hour < this.businessHours.start || hour >= this.businessHours.end) {\n      return { class: 'unavailable', clickable: false };\n    }\n    \n    // 利用可能\n    return { class: 'available', clickable: true };\n  }\n  \n  isStaffUnavailable(dateStr, hour) {\n    // 実際のスタッフスケジュールをチェック\n    // 現在は模擬的に一部の時間を不可にする\n    const unavailableSlots = [\n      // 例: 月曜日の12時、火曜日の14時など\n      // これらは実際のFirestoreデータから取得する\n    ];\n    \n    return unavailableSlots.includes(`${dateStr}_${hour}`);\n  }\n  \n  // ===== スロット選択処理 =====\n  \n  selectTimeSlot(element) {\n    // 既に選択されているスロットの選択を解除\n    document.querySelectorAll('.slot.selected').forEach(slot => {\n      slot.classList.remove('selected');\n      // 元の状態に戻す\n      const date = new Date(slot.dataset.datetime);\n      const hour = parseInt(slot.dataset.hour);\n      const dateStr = slot.dataset.date;\n      const today = new Date();\n      const todayStr = this.formatDate(today, 'YYYY-MM-DD');\n      const currentHour = today.getHours();\n      \n      const status = this.getSlotStatus(date, hour, dateStr, todayStr, currentHour);\n      slot.className = `slot ${status.class}`;\n    });\n    \n    // 新しいスロットを選択\n    element.classList.add('selected');\n    \n    // 選択された日時を保存\n    this.selectedDateTime = new Date(element.dataset.datetime);\n    \n    // 選択された日時を表示\n    this.displaySelectedDateTime();\n    \n    // 次へボタンを有効化\n    this.updateNextButton();\n  }\n  \n  displaySelectedDateTime() {\n    const selectedElement = document.getElementById('selectedDateTime');\n    const selectedTextElement = document.getElementById('selectedDateTimeText');\n    \n    if (!selectedElement || !selectedTextElement || !this.selectedDateTime) return;\n    \n    const formattedDateTime = this.formatDate(this.selectedDateTime, 'full') + \n                             ' ' + \n                             this.selectedDateTime.toLocaleTimeString('ja-JP', {\n                               hour: '2-digit',\n                               minute: '2-digit'\n                             });\n    \n    selectedTextElement.textContent = formattedDateTime;\n    selectedElement.style.display = 'block';\n  }\n  \n  updateNextButton() {\n    const nextBtn = document.getElementById('datetimeNextBtn');\n    if (!nextBtn) return;\n    \n    if (this.selectedDateTime) {\n      nextBtn.style.display = 'block';\n      nextBtn.disabled = false;\n    } else {\n      nextBtn.style.display = 'none';\n      nextBtn.disabled = true;\n    }\n  }\n  \n  // ===== データ読み込み =====\n  \n  async loadBookingData() {\n    try {\n      // Firestoreから既存の予約データを取得\n      await this.loadExistingBookings();\n      await this.loadStaffSchedule();\n      \n      // スケジュールを再描画\n      this.renderTimeSlots();\n      \n    } catch (error) {\n      console.error('予約データの読み込みに失敗:', error);\n    }\n  }\n  \n  async loadExistingBookings() {\n    // Firestoreから予約データを取得\n    if (typeof db === 'undefined') {\n      console.warn('Firestore is not available');\n      return;\n    }\n    \n    try {\n      // 現在の週の範囲でクエリ\n      const weekStart = new Date(this.currentWeekStart);\n      const weekEnd = new Date(this.currentWeekStart);\n      weekEnd.setDate(weekEnd.getDate() + 7);\n      \n      const snapshot = await db.collection('reservations')\n        .where('datetime', '>=', weekStart)\n        .where('datetime', '<', weekEnd)\n        .where('status', '==', 'confirmed')\n        .get();\n      \n      this.existingBookings = [];\n      snapshot.forEach(doc => {\n        const data = doc.data();\n        const date = data.datetime.toDate();\n        const dateStr = this.formatDate(date, 'YYYY-MM-DD');\n        const hour = date.getHours();\n        this.existingBookings.push(`${dateStr}_${hour}`);\n      });\n      \n    } catch (error) {\n      console.error('既存予約の読み込みエラー:', error);\n    }\n  }\n  \n  async loadStaffSchedule() {\n    // スタッフのスケジュール情報を取得\n    // 現在は模擬データ\n    this.staffSchedule = {\n      // 実際にはFirestoreから取得\n    };\n  }\n  \n  // ===== 公開メソッド =====\n  \n  getSelectedDateTime() {\n    return this.selectedDateTime;\n  }\n  \n  reset() {\n    this.selectedDateTime = null;\n    this.currentWeekStart = this.getWeekStart(new Date());\n    this.renderWeeklySchedule();\n    \n    const selectedElement = document.getElementById('selectedDateTime');\n    if (selectedElement) {\n      selectedElement.style.display = 'none';\n    }\n    \n    this.updateNextButton();\n  }\n  \n  // ===== 外部連携用メソッド =====\n  \n  updateForStaff(staffId) {\n    // スタッフが変更された時の処理\n    this.selectedStaffId = staffId;\n    this.loadBookingData(); // 該当スタッフの予約データを再読み込み\n  }\n  \n  updateForMenu(menuId, duration) {\n    // メニューが変更された時の処理\n    this.selectedMenuDuration = duration;\n    // 必要に応じてスケジュール表示を更新\n  }\n}\n\n// グローバルインスタンス\nlet weeklySchedule;\n\n// DOMContentLoaded時に初期化\ndocument.addEventListener('DOMContentLoaded', function() {\n  // 日時選択セクションが存在する場合のみ初期化\n  if (document.getElementById('datetimeSection')) {\n    weeklySchedule = new WeeklySchedule();\n  }\n});\n\n// 外部から参照できるようにエクスポート\nif (typeof module !== 'undefined' && module.exports) {\n  module.exports = WeeklySchedule;\n}
